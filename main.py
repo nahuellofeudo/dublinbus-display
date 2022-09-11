@@ -80,7 +80,6 @@ def main():
     pygame.font.init()
     window = pygame.display.set_mode(size=(960, 360), flags=DOUBLEBUF, display=1)
     font = pygame.font.Font(TEXT_FONT, TEXT_SIZE)
-    font.set_bold(True)
 
     # Paint black
     clear_screen()
