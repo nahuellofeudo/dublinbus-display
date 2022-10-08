@@ -36,12 +36,16 @@ dublinbus_client = DublinBusSoapClient(stops=STOPS, update_queue=update_queue, u
 
 
 def get_line_offset(line: int) -> int:
+    """ Calculate the Y offset within the display for a given text line """
     global font
     return line * (font.get_height() + INTER_LINE_SPACE)
+
 
 def write_entry(line: int, 
     route: str = '', destination: str = '', time_left: str = '', 
     time_color: Color = COLOR_LCD, text_color: Color = COLOR_LCD):
+    """ Draws on the screen buffer an entry corresponding to an arrival time. """
+
     # Step 1: Render the fragments
     route_img = font.render(route[0:4], True, text_color)
     destination_img = font.render(destination[0:21], True, text_color)
@@ -52,6 +56,7 @@ def write_entry(line: int,
     window.blit(route_img, dest=(XOFFSET_ROUTE, vertical_offset))
     window.blit(destination_img, dest=(XOFFSET_DESTINATION, vertical_offset))
     window.blit(time_left_img, dest=(XOFFSEET_TIME_LEFT, vertical_offset))
+
 
 def update_screen(updates: list[ArrivalTime]) -> None:
     """ Repaint the screen with the new arrival times """
@@ -65,11 +70,14 @@ def update_screen(updates: list[ArrivalTime]) -> None:
             time_color=COLOR_LCD 
         )
 
+
 def clear_screen() -> None:
+    """ Clear screen """
     pygame.draw.rect(surface=window, color=COLOR_BACKGROUND, width=0, rect=(0, 0, window.get_width(), window.get_height()))
 
+
 def init_screen(width: int, height: int) -> pygame.Surface:
-    """ Creates a Surface to draw on, with the given size, using either X11/Wayland (desktop) or directfb (no desktop) """
+    """ Create a Surface to draw on, with the given size, using either X11/Wayland (desktop) or directfb (no desktop) """
     drivers = ['x11', 'directfb']
     for driver in drivers:
         print(f'Trying driver {driver}')
@@ -83,11 +91,14 @@ def init_screen(width: int, height: int) -> pygame.Surface:
         return window
     raise Exception('No suitable video driver found!')
 
+
 def main():
+    """ Main function """
+
     global font
     global window
 
-    """ Main method. Initialise graph """
+    """ Main method. Initialise graphics context """
     pygame.init()
     window = init_screen(1920, 720)
     pygame.font.init()
@@ -101,6 +112,7 @@ def main():
     # Main event loop
     running = True
     while running:
+        # Pygame event handling begins
         if pygame.event.peek():
             for e in pygame.event.get():
                 print(e)
@@ -109,15 +121,19 @@ def main():
                 elif e.type == pygame.KEYDOWN:
                     if e.key == pygame.K_ESCAPE:
                         running = False
-        #end event handling
+            pygame.display.flip()
+        # Pygame event handling ends
+
+        # Display update begins
         if update_queue.qsize() > 0:
             clear_screen()
             updates = update_queue.get()
             update_screen(updates)
 
-        pygame.display.flip()
+            pygame.display.flip()
+        # Display update ends
 
-        sleep(0.2)
+        sleep(0.2) 
     pygame.quit()
     exit(0)
 
