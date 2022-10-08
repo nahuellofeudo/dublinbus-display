@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+import os
 from glob import glob
 import pygame
 from pygame.locals import *
@@ -91,7 +91,6 @@ def main():
     pygame.init()
     window = init_screen(1920, 720)
     pygame.font.init()
-    window = pygame.display.set_mode(size=(960, 360), flags=DOUBLEBUF, display=1)
     font = pygame.font.Font(TEXT_FONT, TEXT_SIZE)
 
     # Paint black
@@ -102,18 +101,25 @@ def main():
     # Main event loop
     running = True
     while running:
-        pygame.event.wait(timeout=1)
-        for e in pygame.event.get():
-            if e.type == pygame.QUIT:
-                running = False
+        if pygame.event.peek():
+            for e in pygame.event.get():
+                print(e)
+                if e.type == pygame.QUIT:
+                    running = False
+                elif e.type == pygame.KEYDOWN:
+                    if e.key == pygame.K_ESCAPE:
+                        running = False
         #end event handling
-        if update_queue.not_empty:
+        if update_queue.qsize() > 0:
             clear_screen()
             updates = update_queue.get()
             update_screen(updates)
+
         pygame.display.flip()
 
+        sleep(0.2)
     pygame.quit()
+    exit(0)
 
 
 if __name__ == "__main__":
