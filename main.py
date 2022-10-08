@@ -16,16 +16,16 @@ LINE_COUNT = 5
 COLOR_LCD : pygame.Color = pygame.Color(244, 203, 96)
 COLOR_BACKGROUND = pygame.Color(0, 0, 0)
 UPDATE_INTERVAL_SECONDS = 30
-TEXT_SIZE = 80  # Size of the font in pixels
+TEXT_SIZE = 160  # Size of the font in pixels
 STOPS = [
     2410, # College Drive
     1114  # Priory Walk
 ]
 
 # Offsets of each part within a line
-XOFFSET_ROUTE = 12 # 1920x720 -> 24
-XOFFSET_DESTINATION = 150 # 1920x720 -> 300
-XOFFSEET_TIME_LEFT = 803 # 1920x720 -> 1606
+XOFFSET_ROUTE = 24
+XOFFSET_DESTINATION = 300
+XOFFSEET_TIME_LEFT = 1606
 INTER_LINE_SPACE = 0 # 1920x720 -> 0
 
 # Some global variables
@@ -68,7 +68,20 @@ def update_screen(updates: list[ArrivalTime]) -> None:
 def clear_screen() -> None:
     pygame.draw.rect(surface=window, color=COLOR_BACKGROUND, width=0, rect=(0, 0, window.get_width(), window.get_height()))
 
-
+def init_screen(width: int, height: int) -> pygame.Surface:
+    """ Creates a Surface to draw on, with the given size, using either X11/Wayland (desktop) or directfb (no desktop) """
+    drivers = ['x11', 'directfb']
+    for driver in drivers:
+        print(f'Trying driver {driver}')
+        # Make sure that SDL_VIDEODRIVER is set
+        os.putenv('SDL_VIDEODRIVER', driver)
+        try:
+            pygame.display.init()
+            window = pygame.display.set_mode(size=(width, height), flags=DOUBLEBUF)
+        except pygame.error:
+            continue
+        return window
+    raise Exception('No suitable video driver found!')
 
 def main():
     global font
@@ -76,7 +89,7 @@ def main():
 
     """ Main method. Initialise graph """
     pygame.init()
-    pygame.display.init()
+    window = init_screen(1920, 720)
     pygame.font.init()
     window = pygame.display.set_mode(size=(960, 360), flags=DOUBLEBUF, display=1)
     font = pygame.font.Font(TEXT_FONT, TEXT_SIZE)
