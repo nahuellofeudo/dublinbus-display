@@ -62,6 +62,7 @@ class DublinBusSoapClient:
         self.refresh()
 
     def refresh(self) -> None:
+        """ Poll for new and updated information. Queue it for display update. """
         arrivals = []
         for stop in self._stops:
             with self._client.settings(raw_response=True):
