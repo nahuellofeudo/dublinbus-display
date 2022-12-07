@@ -136,7 +136,6 @@ def main():
         # Pygame event handling begins
         if pygame.event.peek():
             for e in pygame.event.get():
-                print(e)
                 if e.type == pygame.QUIT:
                     running = False
                 elif e.type == pygame.KEYDOWN:
