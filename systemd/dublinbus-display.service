@@ -1,0 +1,14 @@
+[Unit]
+Description=Dublin Bus display
+After=network.target time-sync.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/pi/dublinbus-display
+ExecStart=/home/pi/dublinbus-display/main.py
+ExecStop=/bin/kill $MAINPID
+KillSignal=SIGKILL
+Restart=always
+
+[Install]
+WantedBy=default.target

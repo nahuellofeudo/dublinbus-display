@@ -1,8 +1,8 @@
-# dublinbus-sign
+# dublinbus-display
 Emulates a Dublin Bus electronic sign, showing ETAs for different bus lines
 
-## How to use
-
+## How to use it
+1. Clone the repository into your /home/pi directory.
 1. (optional) Configure the Raspberry Pi to use the non-standard display.
 1. Install all dependencies.
 1. Download the TTF font into the program's directory.
@@ -10,7 +10,14 @@ Emulates a Dublin Bus electronic sign, showing ETAs for different bus lines
 1. Run main.py
 
 
-## 1. Configure the Raspberry Pi
+
+## 1. Configure the Raspberry Pi (pi-specific)
+
+### 1.1 - Disable boot messages
+
+Open ```/boot/cmdline.txt``` and add the parameter ```quiet``` at the end of the line.
+
+### 1.2 - Configure the display aspect ratio (only for ultrawide monitors)
 
 If you plan on using an ultrawide monitor with a similar aspect ratio as the actual Dublin Bus displays (e.g. HSD123KPW2-D10), add the following lines to your /boot/config.txt:
 
@@ -47,3 +54,36 @@ $ sudo pip3 install pygame
 
 * [TTF Font jd_lcd_rounded.ttf by Jecko Development](https://fontstruct.com/fontstructions/show/459792/jd_lcd_rounded)
   * Download and copy the ttf file in the same folder as the code.
+
+
+## 3. Set up the services
+
+### 3.1 - Disable login on tty1:
+
+```
+$ sudo systemctl disable getty@tty1
+$ sudo systemctl stop getty@tty1
+```
+
+### 3.2 - Create a service file to auto-start the display program
+
+First, create a link from the provided systemd service into the systemd directory
+
+```
+$ sudo ln -s /home/pi/dublinbus-display/systemd/dublinbus-display.service /etc/systemd/system/
+```
+
+Enable and start the service
+
+```
+$ sudo systemctl daemon-reload
+$ sudo systemctl enable dublinbus-display
+$ sudo systemctl  start dublinbus-display
+```
+
+Restart the system
+
+```
+$ sudo reboot
+```
+
