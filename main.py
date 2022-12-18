@@ -99,18 +99,9 @@ def clear_screen() -> None:
 
 def init_screen(width: int, height: int) -> pygame.Surface:
     """ Create a Surface to draw on, with the given size, using either X11/Wayland (desktop) or directfb (no desktop) """
-    drivers = ['x11', 'directfb']
-    for driver in drivers:
-        print(f'Trying driver {driver}')
-        # Make sure that SDL_VIDEODRIVER is set
-        os.putenv('SDL_VIDEODRIVER', driver)
-        try:
-            pygame.display.init()
-            window = pygame.display.set_mode(size=(width, height), flags=DOUBLEBUF)
-        except pygame.error:
-            continue
-        return window
-    raise Exception('No suitable video driver found!')
+    pygame.display.init()
+    window = pygame.display.set_mode((0, 0))
+    return window
 
 
 def main():
