@@ -97,10 +97,11 @@ def clear_screen() -> None:
     pygame.draw.rect(surface=window, color=COLOR_BACKGROUND, width=0, rect=(0, 0, window.get_width(), window.get_height()))
 
 
-def init_screen(width: int, height: int) -> pygame.Surface:
+def init_screen() -> pygame.Surface:
     """ Create a Surface to draw on, with the given size, using either X11/Wayland (desktop) or directfb (no desktop) """
     pygame.display.init()
     window = pygame.display.set_mode((0, 0))
+    pygame.mouse.set_visible(False)
     return window
 
 
@@ -112,7 +113,7 @@ def main():
 
     """ Main method. Initialise graphics context """
     pygame.init()
-    window = init_screen(1920, 720)
+    window = init_screen()
     pygame.font.init()
     font = pygame.font.Font(TEXT_FONT, TEXT_SIZE)
 

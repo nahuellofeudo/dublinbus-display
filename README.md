@@ -78,7 +78,7 @@ Enable and start the service
 ```
 $ sudo systemctl daemon-reload
 $ sudo systemctl enable dublinbus-display
-$ sudo systemctl  start dublinbus-display
+$ sudo systemctl start dublinbus-display
 ```
 
 Restart the system
