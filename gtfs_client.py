@@ -14,7 +14,7 @@ from arrival_times import ArrivalTime
 # Constants and configuration
 GTFS_BASE_DATA_URL = "https://www.transportforireland.ie/transitData/google_transit_combined.zip"
 GTFS_R_URL = "https://api.nationaltransport.ie/gtfsr/v1?format=json"
-API_KEY = '470fcdd00bfe45c188fb236757d2df4f'
+API_KEY = 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
 BASE_DATA_MINSIZE = 20000000  # The zipped base data should be over 20-ish megabytes
 
 class GTFSClient:
