@@ -1,7 +1,7 @@
 class ArrivalTime():
     """ Represents the arrival times of buses at one of the configured stops """
 
-    def __init__(self, stop_id: int, route_id: str, destination: str, due_in_seconds: int) -> None:
+    def __init__(self, stop_id: str, route_id: str, destination: str, due_in_seconds: int) -> None:
         self.stop_id = stop_id
         self.route_id = route_id
         self.destination = destination
