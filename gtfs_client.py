@@ -14,8 +14,8 @@ import traceback
 import shutil
 
 class GTFSClient():
-    GTFS_URL = "https://api.nationaltransport.ie/gtfsr/v1?format=json"
-    API_KEY = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    GTFS_URL = "https://api.nationaltransport.ie/gtfsr/v2/gtfsr?format=json"
+    API_KEY = ""
 
     def __init__(self, feed_url: str, stop_names: list[str], update_queue: queue.Queue, update_interval_seconds: int = 60):
         self.stop_names = stop_names
@@ -216,28 +216,37 @@ class GTFSClient():
     def __poll_gtfsr_deltas(self) -> list[map, set]:
 
         # Poll GTFS-R API
-        headers = {"x-api-key": GTFSClient.API_KEY}
-        response = requests.get(url = GTFSClient.GTFS_URL, headers = headers)
-        if response.status_code != 200:
-            print("GTFS-R sent non-OK response: {}\n{}".format(response.status_code, response.text))
-            return ({}, set())
+        if False:
+            headers = {"x-api-key": GTFSClient.API_KEY}
+            response = requests.get(url = GTFSClient.GTFS_URL, headers = headers)
+            if response.status_code != 200:
+                print("GTFS-R sent non-OK response: {}\n{}".format(response.status_code, response.text))
+                return ({}, set())
 
-        deltas_json = json.loads(response.read())
+            deltas_json = json.loads(response.text)
+        else:
+            deltas_json = json.load(open("example.json"))
 
         deltas = {}
         canceled_trips = set()
 
-        for e in deltas_json.get("Entity"):
-            is_deleted = e.get("IsDeleted") or False
+        for e in deltas_json.get("entity"):
+            is_deleted = e.get("is_deleted") or False
             try:
-                trip_id = e.get("TripUpdate").get("Trip").get("TripId")
-                if e.get("TripUpdate").get("Trip").get("ScheduleRelationship") == "Scheduled":
-                    for u in e.get("TripUpdate").get("StopTimeUpdate"): 
-                        delay = u.get("Arrival", u.get("Departure", {})).get("Delay", 0)
+                trip_id = e.get("trip_update").get("trip").get("trip_id")
+                trip_action = e.get("trip_update").get("trip").get("schedule_relationship")
+                if  trip_action == "SCHEDULED":
+                    for u in e.get("trip_update").get("stop_time_update"): 
+                        delay = u.get("arrival", u.get("departure", {})).get("delay", 0)
                         deltas_for_trip = (deltas.get(trip_id) or {})
-                        deltas_for_trip[u.get("StopId")] = delay
+                        deltas_for_trip[u.get("stop_id")] = delay
                         deltas[trip_id] = deltas_for_trip
+
+                elif trip_action == "ADDED":
+                    # TODO: Add support for added trips
+                    pass
                 else:
+                    print("Trip {} canceled.".format(trip_id))
                     canceled_trips.add(trip_id)
             except Exception as x:
                 print("Error parsing GTFS-R entry:", str(e))
