@@ -1,6 +1,9 @@
+
+import refresh_feed
 from arrival_times import ArrivalTime
 import datetime
 import gtfs_kit as gk
+import os
 import pandas as pd
 import queue
 import time
@@ -8,8 +11,19 @@ import threading
 import traceback
 
 class GTFSClient():
-    def __init__(self, feed_name: str, stop_names: list[str], update_queue: queue.Queue, update_interval_seconds: int = 60):
+    def __init__(self, feed_url: str, stop_names: list[str], update_queue: queue.Queue, update_interval_seconds: int = 60):
         self.stop_names = stop_names
+        feed_name = feed_url.split('/')[-1]
+
+        # Make sure that the feed file is up to date
+        last_mtime = os.stat(feed_name).st_mtime
+        refreshed, new_mtime = refresh_feed.update_local_file_from_url_v1(last_mtime, feed_name, feed_url)
+        if refreshed:
+            print("The feed file was refreshed.")
+        else:
+            print("The feed file was up to date")
+
+        # Load the feed
         self.feed = gk.read_feed(feed_name, dist_units='km')
         self.stop_ids = self.__wanted_stop_ids()
 
@@ -110,6 +124,11 @@ class GTFSClient():
         return joined_data
 
 
+    def start(self) -> None:
+        """ Start the refresh thread """
+        self._refresh_thread.start()
+        self.refresh()
+
 
     def refresh(self):
         """
@@ -149,7 +168,7 @@ def every(delay, task) -> None:
         # skip tasks if we are behind schedule:
         next_time += (time.time() - next_time) // delay * delay + delay
 
-
-c = GTFSClient('google_transit_combined.zip', ['College Drive, stop 2410', 'Priory Walk, stop 1114'], None, None)
-
-print(c.refresh())
+if __name__ == "__main__":
+    c = GTFSClient('https://www.transportforireland.ie/transitData/google_transit_combined.zip', 
+                   ['College Drive, stop 2410', 'Priory Walk, stop 1114'], None, None)
+    print(c.refresh())

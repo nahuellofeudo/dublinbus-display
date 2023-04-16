@@ -8,6 +8,7 @@ from time import sleep
 from dublinbus_soap_client import DublinBusSoapClient
 import queue
 from arrival_times import ArrivalTime
+from gtfs_client import GTFSClient
 
 # Constants
 # The font is JD LCD Rounded by Jecko Development 
@@ -22,8 +23,8 @@ COLOR_BACKGROUND = pygame.Color(0, 0, 0)
 UPDATE_INTERVAL_SECONDS = 30
 TEXT_SIZE = 160  # Size of the font in pixels
 STOPS = [
-    2410, # College Drive
-    1114  # Priory Walk
+    'College Drive, stop 2410', 
+    'Priory Walk, stop 1114',
 ]
 
 # Define how long it takes to walk to a particular stop
@@ -42,8 +43,8 @@ INTER_LINE_SPACE = -20 # 1920x720 -> 0
 window : pygame.Surface = None
 font: pygame.font.Font = None
 update_queue = queue.Queue(maxsize=10)
-dublinbus_client = DublinBusSoapClient(stops=STOPS, update_queue=update_queue, update_interval_seconds=UPDATE_INTERVAL_SECONDS)
-
+#dublinbus_client = DublinBusSoapClient(stops=STOPS, update_queue=update_queue, update_interval_seconds=UPDATE_INTERVAL_SECONDS)
+dublinbus_client = GTFSClient(feed_name='google_transit_combined.zip', stop_names=STOPS, update_queue=update_queue, update_interval_seconds=UPDATE_INTERVAL_SECONDS)
 
 def get_line_offset(line: int) -> int:
     """ Calculate the Y offset within the display for a given text line """
