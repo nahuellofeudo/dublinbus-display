@@ -6,9 +6,11 @@ import gtfs_kit as gk
 import os
 import pandas as pd
 import queue
+import tempfile
 import time
 import threading
 import traceback
+import shutil
 
 class GTFSClient():
     def __init__(self, feed_url: str, stop_names: list[str], update_queue: queue.Queue, update_interval_seconds: int = 60):
@@ -24,13 +26,72 @@ class GTFSClient():
             print("The feed file was up to date")
 
         # Load the feed
-        self.feed = gk.read_feed(feed_name, dist_units='km')
+        self.feed = self._read_feed(feed_name, dist_units='km')
         self.stop_ids = self.__wanted_stop_ids()
 
         # Schedule refresh       
         self.update_queue = update_queue
         if update_interval_seconds and update_queue: 
             self._refresh_thread = threading.Thread(target=lambda: every(self._update_interval_seconds, self.refresh))
+
+    def _read_feed(self, path: gk.Path, dist_units: str) -> gk.Feed:
+        """
+        NOTE: This helper method was extracted from gtfs_kit.feed to modify it
+        to only load the stop_times for the stops we are interested in,
+        because loading the entire feed would use more memory than the SoC 
+        in the Raspberry Pi Zero W has.
+
+        Helper function for :func:`read_feed`.
+        Create a Feed instance from the given path and given distance units.
+        The path should be a directory containing GTFS text files or a
+        zip file that unzips as a collection of GTFS text files
+        (and not as a directory containing GTFS text files).
+        The distance units given must lie in :const:`constants.dist_units`
+
+        Notes:
+
+        - Ignore non-GTFS files in the feed
+        - Automatically strip whitespace from the column names in GTFS files
+        """
+        path = gk.Path(path)
+        if not path.exists():
+            raise ValueError(f"Path {path} does not exist")
+
+        # Unzip path to temporary directory if necessary
+        if path.is_file():
+            zipped = True
+            tmp_dir = tempfile.TemporaryDirectory()
+            src_path = gk.Path(tmp_dir.name)
+            shutil.unpack_archive(str(path), tmp_dir.name, "zip")
+        else:
+            zipped = False
+            src_path = path
+
+        # Read files into feed dictionary of DataFrames
+        feed_dict = {table: None for table in gk.cs.GTFS_REF["table"]}
+        for p in src_path.iterdir():
+            table = p.stem
+            # Skip empty files, irrelevant files, and files with no data
+            if (
+                p.is_file()
+                and p.stat().st_size
+                and p.suffix == ".txt"
+                and table in feed_dict
+            ):
+                # utf-8-sig gets rid of the byte order mark (BOM);
+                # see http://stackoverflow.com/questions/17912307/u-ufeff-in-python-string
+                df = pd.read_csv(p, dtype=gk.cs.DTYPE, encoding="utf-8-sig")
+                if not df.empty:
+                    feed_dict[table] = gk.cn.clean_column_names(df)
+
+        feed_dict["dist_units"] = dist_units
+
+        # Delete temporary directory
+        if zipped:
+            tmp_dir.cleanup()
+
+        # Create feed
+        return gk.Feed(**feed_dict)
 
 
     def __wanted_stop_ids(self) -> pd.core.frame.DataFrame:
