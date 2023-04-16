@@ -26,7 +26,7 @@ class GTFSClient():
             print("The feed file was up to date")
 
         # Load the feed
-        self.feed = self._read_feed(feed_name, dist_units='km')
+        self.feed = self._read_feed(feed_name, dist_units='km', stop_names = stop_names)
         self.stop_ids = self.__wanted_stop_ids()
 
         # Schedule refresh       
@@ -34,7 +34,7 @@ class GTFSClient():
         if update_interval_seconds and update_queue: 
             self._refresh_thread = threading.Thread(target=lambda: every(self._update_interval_seconds, self.refresh))
 
-    def _read_feed(self, path: gk.Path, dist_units: str) -> gk.Feed:
+    def _read_feed(self, path: gk.Path, dist_units: str, stop_names: list[str]) -> gk.Feed:
         """
         NOTE: This helper method was extracted from gtfs_kit.feed to modify it
         to only load the stop_times for the stops we are interested in,
@@ -69,6 +69,7 @@ class GTFSClient():
 
         # Read files into feed dictionary of DataFrames
         feed_dict = {table: None for table in gk.cs.GTFS_REF["table"]}
+        stop_times_p = None
         for p in src_path.iterdir():
             table = p.stem
             # Skip empty files, irrelevant files, and files with no data
@@ -78,11 +79,28 @@ class GTFSClient():
                 and p.suffix == ".txt"
                 and table in feed_dict
             ):
-                # utf-8-sig gets rid of the byte order mark (BOM);
-                # see http://stackoverflow.com/questions/17912307/u-ufeff-in-python-string
-                df = pd.read_csv(p, dtype=gk.cs.DTYPE, encoding="utf-8-sig")
-                if not df.empty:
-                    feed_dict[table] = gk.cn.clean_column_names(df)
+                if p.name == "stop_times.txt":
+                    # Defer the loading of stop_times.txt until after the stop IDs are known
+                    stop_times_p = p
+                else:
+                    # utf-8-sig gets rid of the byte order mark (BOM);
+                    # see http://stackoverflow.com/questions/17912307/u-ufeff-in-python-string
+                    df = pd.read_csv(p, dtype=gk.cs.DTYPE, encoding="utf-8-sig")
+                    if not df.empty:
+                        feed_dict[table] = gk.cn.clean_column_names(df)
+
+        # Finally, load stop_times.txt
+        if stop_times_p:
+            # Obtain the list of IDs of the desired stops. This is similar to what __wanted_stop_ids() does, 
+            # but without a dependency on a fully formed feed object
+            wanted_stop_ids = feed_dict.get("stops")[feed_dict.get("stops")["stop_name"].isin(stop_names)]["stop_id"]
+
+            iter_csv = pd.read_csv(stop_times_p, iterator=True, chunksize=1000)
+            df = pd.concat([chunk[chunk["stop_id"].isin(wanted_stop_ids)] for chunk in iter_csv])
+
+            #df = pd.read_csv(stop_times_p, dtype=gk.cs.DTYPE, encoding="utf-8-sig")
+            if not df.empty:
+                feed_dict[stop_times_p.stem] = gk.cn.clean_column_names(df)
 
         feed_dict["dist_units"] = dist_units
 
