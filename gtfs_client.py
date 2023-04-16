@@ -30,9 +30,10 @@ class GTFSClient():
         self.stop_ids = self.__wanted_stop_ids()
 
         # Schedule refresh       
-        self.update_queue = update_queue
+        self._update_queue = update_queue
         if update_interval_seconds and update_queue: 
-            self._refresh_thread = threading.Thread(target=lambda: every(self._update_interval_seconds, self.refresh))
+            self._update_interval_seconds = update_interval_seconds
+            self._refresh_thread = threading.Thread(target=lambda: every(update_interval_seconds, self.refresh))
 
     def _read_feed(self, path: gk.Path, dist_units: str, stop_names: list[str]) -> gk.Feed:
         """
@@ -226,8 +227,8 @@ class GTFSClient():
             )
             arrivals.append(arrival)
 
-        if self.update_queue:
-            self.update_queue.put(arrivals)
+        if self._update_queue:
+            self._update_queue.put(arrivals)
         return arrivals
 
 
@@ -235,9 +236,9 @@ def every(delay, task) -> None:
     """ Auxilliary function to schedule updates. 
         Taken from https://stackoverflow.com/questions/474528/what-is-the-best-way-to-repeatedly-execute-a-function-every-x-seconds
     """
-    next_time = time() + delay
+    next_time = time.time() + delay
     while True:
-        time.sleep(max(0, next_time - time()))
+        time.sleep(max(0, next_time - time.time()))
         try:
             task()
         except Exception:
