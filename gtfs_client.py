@@ -5,6 +5,7 @@ import json
 import os
 import pandas as pd
 import queue
+import re
 import refresh_feed
 import requests
 import tempfile
@@ -17,12 +18,16 @@ class GTFSClient():
     GTFS_URL = "https://api.nationaltransport.ie/gtfsr/v2/gtfsr?format=json"
     API_KEY = ""
 
-    def __init__(self, feed_url: str, stop_names: list[str], update_queue: queue.Queue, update_interval_seconds: int = 60):
-        self.stop_names = stop_names
+    def __init__(self, feed_url: str, stop_codes: list[str], update_queue: queue.Queue, update_interval_seconds: int = 60):
+        self.stop_codes = stop_codes
         feed_name = feed_url.split('/')[-1]
 
         # Make sure that the feed file is up to date
-        last_mtime = os.stat(feed_name).st_mtime
+        try:
+            last_mtime = os.stat(feed_name).st_mtime
+        except:
+            last_mtime = 0
+
         refreshed, new_mtime = refresh_feed.update_local_file_from_url_v1(last_mtime, feed_name, feed_url)
         if refreshed:
             print("The feed file was refreshed.")
@@ -30,8 +35,10 @@ class GTFSClient():
             print("The feed file was up to date")
 
         # Load the feed
-        self.feed = self._read_feed(feed_name, dist_units='km', stop_names = stop_names)
+        self.feed = self._read_feed(feed_name, dist_units='km', stop_codes = stop_codes)
         self.stop_ids = self.__wanted_stop_ids()
+        self.deltas = {}
+        self.canceled_trips = set()
 
         # Schedule refresh       
         self._update_queue = update_queue
@@ -39,7 +46,7 @@ class GTFSClient():
             self._update_interval_seconds = update_interval_seconds
             self._refresh_thread = threading.Thread(target=lambda: every(update_interval_seconds, self.refresh))
 
-    def _read_feed(self, path: gk.Path, dist_units: str, stop_names: list[str]) -> gk.Feed:
+    def _read_feed(self, path: gk.Path, dist_units: str, stop_codes: list[str]) -> gk.Feed:
         """
         NOTE: This helper method was extracted from gtfs_kit.feed to modify it
         to only load the stop_times for the stops we are interested in,
@@ -98,7 +105,7 @@ class GTFSClient():
         if stop_times_p:
             # Obtain the list of IDs of the desired stops. This is similar to what __wanted_stop_ids() does, 
             # but without a dependency on a fully formed feed object
-            wanted_stop_ids = feed_dict.get("stops")[feed_dict.get("stops")["stop_name"].isin(stop_names)]["stop_id"]
+            wanted_stop_ids = feed_dict.get("stops")[feed_dict.get("stops")["stop_code"].isin(stop_codes)]["stop_id"]
 
             iter_csv = pd.read_csv(stop_times_p, iterator=True, chunksize=1000)
             df = pd.concat([chunk[chunk["stop_id"].isin(wanted_stop_ids)] for chunk in iter_csv])
@@ -121,7 +128,7 @@ class GTFSClient():
         """
         Return a DataFrame with the ID and names of the chosen stop(s) as requested in station_names
         """
-        stops = self.feed.stops[self.feed.stops["stop_name"].isin(self.stop_names)]
+        stops = self.feed.stops[self.feed.stops["stop_code"].isin(self.stop_codes)]
         if stops.empty: 
             raise Exception("Stops is empty!")
         return stops["stop_id"]
@@ -133,7 +140,7 @@ class GTFSClient():
         """
         todays_date = when.strftime("%Y%m%d")
         todays_weekday = when.strftime("%A").lower()
-        active_calendars = self.feed.calendar.query('start_date < @todays_date and end_date > @todays_date and {} == 1'.format(todays_weekday))
+        active_calendars = self.feed.calendar.query('start_date <= @todays_date and end_date >= @todays_date and {} == 1'.format(todays_weekday))
         return active_calendars
 
 
@@ -147,17 +154,18 @@ class GTFSClient():
         now = datetime.datetime.now()
         now_active = self.__service_ids_active_at(now)
         if now_active.empty:
-            raise Exception("There are no service IDs for today!")
+            print("There are no service IDs for today!")
 
         # Merge with the service IDs for tomorrow (in case the number of trips spills over to tomorrow)
         tomorrow = datetime.datetime.now() + datetime.timedelta(days=1)
         tomorrow_active = self.__service_ids_active_at(tomorrow)
         if tomorrow_active.empty:
-            raise Exception("There are no service IDs for tomorrow!")
+            print("There are no service IDs for tomorrow!")
 
-        active_calendars = pd.concat([now_active, tomorrow_active])
+        #active_calendars = pd.concat([now_active, tomorrow_active])
+        active_calendars = now_active
         if active_calendars.empty:
-            raise Exception("The concatenation of today and tomorrow's calendars is empty. This should not happen.")
+            print("The concatenation of today and tomorrow's calendars is empty. This should not happen.")
         
         return active_calendars["service_id"]
 
@@ -168,7 +176,7 @@ class GTFSClient():
         """
         trips = self.feed.trips[self.feed.trips["service_id"].isin(service_ids)]
         if trips.empty:
-            raise Exception("There are no active trips!")
+            print("There are no active trips!")
 
         return trips["trip_id"]
 
@@ -210,18 +218,22 @@ class GTFSClient():
         now = datetime.datetime.now().strftime("%H:%M:%S")
         tnow = self.__time_to_seconds(now)
         tstop = self.__time_to_seconds(time_str)
-        return tstop - tnow
+        if tstop > tnow:
+            return tstop - tnow
+        else:
+            # If the stop time is less than the current time, the stop is tomorrow
+            return tstop + 86400 - tnow
 
 
     def __poll_gtfsr_deltas(self) -> list[map, set]:
 
         # Poll GTFS-R API
-        if False:
+        if GTFSClient.API_KEY != "":
             headers = {"x-api-key": GTFSClient.API_KEY}
             response = requests.get(url = GTFSClient.GTFS_URL, headers = headers)
             if response.status_code != 200:
                 print("GTFS-R sent non-OK response: {}\n{}".format(response.status_code, response.text))
-                return ({}, set())
+                return (None, None)
 
             deltas_json = json.loads(response.text)
         else:
@@ -246,7 +258,6 @@ class GTFSClient():
                     # TODO: Add support for added trips
                     pass
                 else:
-                    print("Trip {} canceled.".format(trip_id))
                     canceled_trips.add(trip_id)
             except Exception as x:
                 print("Error parsing GTFS-R entry:", str(e))
@@ -278,6 +289,10 @@ class GTFSClient():
         """
         # Retrieve the GTFS-R deltas
         deltas, canceled_trips = self.__poll_gtfsr_deltas()
+        if deltas:
+            # Only update deltas and canceled trips if the API returns data
+            self.deltas = deltas
+            self.canceled_trips = canceled_trips
 
         # 
         arrivals = []
@@ -285,14 +300,15 @@ class GTFSClient():
         buses = self.get_next_n_buses(10) 
         
         for index, bus in buses.iterrows():
-            if not bus["trip_id"] in canceled_trips:
-                delta = deltas.get(bus["trip_id"], {}).get(bus["stop_id"], 0)
+            if not bus["trip_id"] in self.canceled_trips:
+                delta = self.deltas.get(bus["trip_id"], {}).get(bus["stop_id"], 0)
                 if delta != 0:
                     print("Delta for route {} stop {} is {}".format(bus["route_short_name"], bus["stop_id"], delta))
 
                 arrival = ArrivalTime(stop_id = bus["stop_id"], 
                                     route_id = bus["route_short_name"],
-                                    destination= bus["route_long_name"].split(" - ")[1].strip(),
+                                    # So apparently the GTFS feed uses non-ascii dashes because OF COURSE THEY DO
+                                    destination = re.split(r"–|-", bus["route_long_name"])[-1].strip(),
                                     due_in_seconds = self.__due_in_seconds(bus["arrival_time"]) + delta
                 )
                 arrivals.append(arrival)
@@ -322,6 +338,6 @@ def every(delay, task) -> None:
         next_time += (time.time() - next_time) // delay * delay + delay
 
 if __name__ == "__main__":
-    c = GTFSClient('https://www.transportforireland.ie/transitData/google_transit_combined.zip', 
-                   ['College Drive, stop 2410', 'Priory Walk, stop 1114'], None, None)
+    c = GTFSClient('https://www.transportforireland.ie/transitData/Data/GTFS_Realtime.zip', 
+                   ['2410', '1114'], None, None)
     print(c.refresh())

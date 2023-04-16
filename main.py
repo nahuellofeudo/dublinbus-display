@@ -20,12 +20,9 @@ COLOR_LCD_GREEN: pygame.Color = pygame.Color(0xb3, 0xff, 0x00)
 COLOR_LCD_RED: pygame.Color = pygame.Color(0xff, 0x3a, 0x4a)
 
 COLOR_BACKGROUND = pygame.Color(0, 0, 0)
-UPDATE_INTERVAL_SECONDS = 30
+UPDATE_INTERVAL_SECONDS = 62
 TEXT_SIZE = 160  # Size of the font in pixels
-STOPS = [
-    'College Drive, stop 2410', 
-    'Priory Walk, stop 1114',
-]
+STOPS = ['2410', '1114']
 
 # Define how long it takes to walk to a particular stop
 MINUTES_TO_ROUTE = {
@@ -44,8 +41,8 @@ window : pygame.Surface = None
 font: pygame.font.Font = None
 update_queue = queue.Queue(maxsize=10)
 #scheduler = DublinBusSoapClient(stops=STOPS, update_queue=update_queue, update_interval_seconds=UPDATE_INTERVAL_SECONDS)
-scheduler = GTFSClient(feed_url='https://www.transportforireland.ie/transitData/google_transit_combined.zip', 
-                              stop_names=STOPS, update_queue=update_queue, update_interval_seconds=UPDATE_INTERVAL_SECONDS)
+scheduler = GTFSClient(feed_url='https://www.transportforireland.ie/transitData/Data/GTFS_Realtime.zip', 
+                              stop_codes=STOPS, update_queue=update_queue, update_interval_seconds=UPDATE_INTERVAL_SECONDS)
 
 def get_line_offset(line: int) -> int:
     """ Calculate the Y offset within the display for a given text line """
