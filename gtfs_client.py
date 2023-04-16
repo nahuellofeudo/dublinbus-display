@@ -1,5 +1,3 @@
-
-import refresh_feed
 from arrival_times import ArrivalTime
 import datetime
 import gtfs_kit as gk
@@ -7,6 +5,8 @@ import json
 import os
 import pandas as pd
 import queue
+import refresh_feed
+import requests
 import tempfile
 import time
 import threading
@@ -14,6 +14,9 @@ import traceback
 import shutil
 
 class GTFSClient():
+    GTFS_URL = "https://api.nationaltransport.ie/gtfsr/v1?format=json"
+    API_KEY = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
     def __init__(self, feed_url: str, stop_names: list[str], update_queue: queue.Queue, update_interval_seconds: int = 60):
         self.stop_names = stop_names
         feed_name = feed_url.split('/')[-1]
@@ -209,8 +212,17 @@ class GTFSClient():
         tstop = self.__time_to_seconds(time_str)
         return tstop - tnow
 
+
     def __poll_gtfsr_deltas(self) -> list[map, set]:
-        deltas_json = json.load(open("example.json"))
+
+        # Poll GTFS-R API
+        headers = {"x-api-key": GTFSClient.API_KEY}
+        response = requests.get(url = GTFSClient.GTFS_URL, headers = headers)
+        if response.status_code != 200:
+            print("GTFS-R sent non-OK response: {}\n{}".format(response.status_code, response.text))
+            return ({}, set())
+
+        deltas_json = json.loads(response.read())
 
         deltas = {}
         canceled_trips = set()
