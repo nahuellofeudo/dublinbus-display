@@ -173,7 +173,7 @@ class GTFSClient():
                     trip_ids: pd.core.series.Series,
                     n: int) -> pd.core.frame.DataFrame:
         now = datetime.datetime.now()
-        current_time = now.strftime("%H:%m:%S")
+        current_time = now.strftime("%H:%M:%S")
         next_stops = self.feed.stop_times[self.feed.stop_times["stop_id"].isin(self.stop_ids)
                                     & self.feed.stop_times["trip_id"].isin(trip_ids)
                                     & (self.feed.stop_times["arrival_time"] > current_time)]
@@ -191,6 +191,22 @@ class GTFSClient():
             .join(self.feed.routes.set_index("route_id"), on="route_id"))   
 
         return joined_data 
+
+    def _time_to_seconds(self, s: str) -> int:
+        sx = s.split(":")
+        if len(sx) != 3: 
+            print("Malformed timestamp:", s)
+            return 0
+        return int(sx[0]) * 3600 + int(sx[1]) * 60 + int (sx[2])
+
+    def _due_in_seconds(self, time_str: str) -> int:
+        """
+        Returns the number of seconds in the future that the time_str (format hh:mm:ss) is
+        """
+        now = datetime.datetime.now().strftime("%H:%M:%S")
+        tnow = self._time_to_seconds(now)
+        tstop = self._time_to_seconds(time_str)
+        return tstop - tnow
 
 
     def get_next_n_buses(self, num_entries: int) -> pd.core.frame.DataFrame:
@@ -223,14 +239,14 @@ class GTFSClient():
             arrival = ArrivalTime(stop_id = bus["stop_id"], 
                                   route_id = bus["route_short_name"],
                                   destination= bus["route_long_name"].split(" - ")[1].strip(),
-                                  due_in_seconds = 0
+                                  due_in_seconds = self._due_in_seconds(bus["arrival_time"])
             )
             arrivals.append(arrival)
 
         if self._update_queue:
             self._update_queue.put(arrivals)
         return arrivals
-
+    
 
 def every(delay, task) -> None:
     """ Auxilliary function to schedule updates. 
