@@ -43,8 +43,8 @@ INTER_LINE_SPACE = -20 # 1920x720 -> 0
 window : pygame.Surface = None
 font: pygame.font.Font = None
 update_queue = queue.Queue(maxsize=10)
-#dublinbus_client = DublinBusSoapClient(stops=STOPS, update_queue=update_queue, update_interval_seconds=UPDATE_INTERVAL_SECONDS)
-dublinbus_client = GTFSClient(feed_url='https://www.transportforireland.ie/transitData/google_transit_combined.zip', 
+#scheduler = DublinBusSoapClient(stops=STOPS, update_queue=update_queue, update_interval_seconds=UPDATE_INTERVAL_SECONDS)
+scheduler = GTFSClient(feed_url='https://www.transportforireland.ie/transitData/google_transit_combined.zip', 
                               stop_names=STOPS, update_queue=update_queue, update_interval_seconds=UPDATE_INTERVAL_SECONDS)
 
 def get_line_offset(line: int) -> int:
@@ -122,7 +122,7 @@ def main():
     # Paint black
     clear_screen()
     pygame.display.flip()
-    dublinbus_client.start()
+    scheduler.start()
 
     # Main event loop
     running = True
