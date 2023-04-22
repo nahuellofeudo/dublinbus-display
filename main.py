@@ -5,7 +5,6 @@ from glob import glob
 import pygame
 from pygame.locals import *
 from time import sleep
-from dublinbus_soap_client import DublinBusSoapClient
 import queue
 from arrival_times import ArrivalTime
 from gtfs_client import GTFSClient
