@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from curses import COLOR_GREEN, COLOR_RED
+from datetime import datetime
 import os
 from glob import glob
 import pygame
@@ -65,6 +66,16 @@ def write_entry(line: int,
     window.blit(destination_img, dest=(XOFFSET_DESTINATION, vertical_offset))
     window.blit(time_left_img, dest=(XOFFSEET_TIME_LEFT, vertical_offset))
 
+def write_line(line: int, text: str, text_color: Color = COLOR_LCD_AMBER):
+    """ Draws on the screen buffer an arbitrary text. """
+
+    # Step 1: Render the fragments
+    text_img = font.render(text, True, text_color)
+
+    # Compose the line
+    vertical_offset = get_line_offset(line)
+    window.blit(text_img, dest=(XOFFSET_ROUTE, vertical_offset))
+
 
 def update_screen(updates: list[ArrivalTime]) -> None:
     """ Repaint the screen with the new arrival times """
@@ -89,6 +100,9 @@ def update_screen(updates: list[ArrivalTime]) -> None:
             time_color=lcd_color
         )
 
+        # Add the current time to the bottom line
+        datetime_text = "Current time: " + datetime.today().strftime("%d/%m/%Y %H:%M:%S")
+        write_line(5, datetime_text)
 
 def clear_screen() -> None:
     """ Clear screen """
