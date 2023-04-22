@@ -17,7 +17,7 @@ import zipfile
 
 class GTFSClient():
     GTFS_URL = "https://api.nationaltransport.ie/gtfsr/v2/gtfsr?format=json"
-    API_KEY = open("api-key.txt").read()
+    API_KEY = open("api-key.txt").read().trim()
 
     def __init__(self, feed_url: str, stop_codes: list[str], update_queue: queue.Queue, update_interval_seconds: int = 60):
         self.stop_codes = stop_codes
