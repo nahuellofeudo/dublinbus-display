@@ -13,6 +13,7 @@ import time
 import threading
 import traceback
 import shutil
+import zipfile
 
 class GTFSClient():
     GTFS_URL = "https://api.nationaltransport.ie/gtfsr/v2/gtfsr?format=json"
@@ -50,75 +51,48 @@ class GTFSClient():
         """
         NOTE: This helper method was extracted from gtfs_kit.feed to modify it
         to only load the stop_times for the stops we are interested in,
-        because loading the entire feed would use more memory than the SoC 
-        in the Raspberry Pi Zero W has.
+        because loading the entire feed would use more memory than the Raspberry Pi Zero W has.
 
-        Helper function for :func:`read_feed`.
-        Create a Feed instance from the given path and given distance units.
-        The path should be a directory containing GTFS text files or a
-        zip file that unzips as a collection of GTFS text files
-        (and not as a directory containing GTFS text files).
-        The distance units given must lie in :const:`constants.dist_units`
-
-        Notes:
-
-        - Ignore non-GTFS files in the feed
-        - Automatically strip whitespace from the column names in GTFS files
+        This version also reads CSV data straight from the zip file to avoid
+        wearing out the Pi's SD card.
         """
+        FILES_TO_LOAD = [
+            # List of feed files to load. stop_times.txt is loaded separately.
+            'shapes.txt',
+            'trips.txt',
+            'routes.txt',
+            'calendar.txt',
+            'calendar_dates.txt',
+            'stops.txt',
+            'agency.txt'
+        ]
+
         path = gk.Path(path)
         if not path.exists():
             raise ValueError(f"Path {path} does not exist")
 
-        # Unzip path to temporary directory if necessary
-        if path.is_file():
-            zipped = True
-            tmp_dir = tempfile.TemporaryDirectory()
-            src_path = gk.Path(tmp_dir.name)
-            shutil.unpack_archive(str(path), tmp_dir.name, "zip")
-        else:
-            zipped = False
-            src_path = path
-
-        # Read files into feed dictionary of DataFrames
         feed_dict = {table: None for table in gk.cs.GTFS_REF["table"]}
-        stop_times_p = None
-        for p in src_path.iterdir():
-            table = p.stem
-            # Skip empty files, irrelevant files, and files with no data
-            if (
-                p.is_file()
-                and p.stat().st_size
-                and p.suffix == ".txt"
-                and table in feed_dict
-            ):
-                if p.name == "stop_times.txt":
-                    # Defer the loading of stop_times.txt until after the stop IDs are known
-                    stop_times_p = p
-                else:
-                    # utf-8-sig gets rid of the byte order mark (BOM);
-                    # see http://stackoverflow.com/questions/17912307/u-ufeff-in-python-string
-                    df = pd.read_csv(p, dtype=gk.cs.DTYPE, encoding="utf-8-sig")
+        with zipfile.ZipFile(path) as z:
+            for filename in FILES_TO_LOAD:
+                table = filename.split(".")[0]
+                # read the file
+                with z.open(filename) as f:
+                    df = pd.read_csv(f, dtype=gk.cs.DTYPE, encoding="utf-8-sig")
                     if not df.empty:
                         feed_dict[table] = gk.cn.clean_column_names(df)
 
-        # Finally, load stop_times.txt
-        if stop_times_p:
+            # Finally, load stop_times.txt
             # Obtain the list of IDs of the desired stops. This is similar to what __wanted_stop_ids() does, 
             # but without a dependency on a fully formed feed object
             wanted_stop_ids = feed_dict.get("stops")[feed_dict.get("stops")["stop_code"].isin(stop_codes)]["stop_id"]
+            with z.open("stop_times.txt") as f:
+                iter_csv = pd.read_csv(f, iterator=True, chunksize=1000, dtype=gk.cs.DTYPE, encoding="utf-8-sig")
+                df = pd.concat([chunk[chunk["stop_id"].isin(wanted_stop_ids)] for chunk in iter_csv])
 
-            iter_csv = pd.read_csv(stop_times_p, iterator=True, chunksize=1000)
-            df = pd.concat([chunk[chunk["stop_id"].isin(wanted_stop_ids)] for chunk in iter_csv])
-
-            #df = pd.read_csv(stop_times_p, dtype=gk.cs.DTYPE, encoding="utf-8-sig")
             if not df.empty:
-                feed_dict[stop_times_p.stem] = gk.cn.clean_column_names(df)
+                feed_dict["stop_times"] = gk.cn.clean_column_names(df)
 
         feed_dict["dist_units"] = dist_units
-
-        # Delete temporary directory
-        if zipped:
-            tmp_dir.cleanup()
 
         # Create feed
         return gk.Feed(**feed_dict)
