@@ -90,6 +90,9 @@ class GTFSClient():
                 df = pd.concat([chunk[chunk["stop_id"].isin(wanted_stop_ids)] for chunk in iter_csv])
 
             if not df.empty:
+                # Fix arrival and departure times so that comparisons work the way they are expected to
+                df["arrival_time"] = df.apply(lambda row: row["arrival_time"] if len(row["arrival_time"]) == 8 else "0"+row["arrival_time"], axis=1)
+                df["departure_time"] = df.apply(lambda row: row["departure_time"] if len(row["departure_time"]) == 8 else "0"+row["departure_time"], axis=1)
                 feed_dict["stop_times"] = gk.cn.clean_column_names(df)
 
         feed_dict["dist_units"] = dist_units
