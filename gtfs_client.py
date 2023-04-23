@@ -222,7 +222,7 @@ class GTFSClient():
                 trip_id = e.get("trip_update").get("trip").get("trip_id")
                 trip_action = e.get("trip_update").get("trip").get("schedule_relationship")
                 if  trip_action == "SCHEDULED":
-                    for u in e.get("trip_update").get("stop_time_update"): 
+                    for u in e.get("trip_update", {}).get("stop_time_update", []): 
                         delay = u.get("arrival", u.get("departure", {})).get("delay", 0)
                         deltas_for_trip = (deltas.get(trip_id) or {})
                         deltas_for_trip[u.get("stop_id")] = delay
@@ -230,8 +230,10 @@ class GTFSClient():
 
                 elif trip_action == "ADDED":
                     # TODO: Add support for added trips
+                    print("Trip {} added.".format(trip_id))
                     pass
                 else:
+                    print("Trip {} canceled.".format(trip_id))
                     canceled_trips.add(trip_id)
             except Exception as x:
                 print("Error parsing GTFS-R entry:", str(e))
