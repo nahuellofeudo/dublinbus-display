@@ -101,7 +101,7 @@ def update_screen(updates: list[ArrivalTime]) -> None:
         )
 
         # Add the current time to the bottom line
-        datetime_text = "Current time: " + datetime.today().strftime("%d/%m/%Y %H:%M:%S")
+        datetime_text = "Current time: " + datetime.today().strftime("%d/%m/%Y %H:%M")
         write_line(5, datetime_text)
 
 def clear_screen() -> None:
