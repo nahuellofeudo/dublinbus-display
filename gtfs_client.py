@@ -57,7 +57,6 @@ class GTFSClient():
         """
         FILES_TO_LOAD = [
             # List of feed files to load. stop_times.txt is loaded separately.
-            'shapes.txt',
             'trips.txt',
             'routes.txt',
             'calendar.txt',
