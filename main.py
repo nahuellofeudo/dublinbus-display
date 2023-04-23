@@ -96,7 +96,7 @@ def update_screen(updates: list[ArrivalTime]) -> None:
             line=line_num,
             route=update.route_id,
             destination=update.destination,
-            time_left='Due' if update.isDue() else f'{update.due_in_minutes}min',
+            time_left='Due' if update.isDue() else  update.due_in_str(),
             time_color=lcd_color
         )
 
