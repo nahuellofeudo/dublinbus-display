@@ -283,8 +283,7 @@ class GTFSClient():
 
                 arrival = ArrivalTime(stop_id = bus["stop_id"], 
                                     route_id = bus["route_short_name"],
-                                    # So apparently the GTFS feed uses non-ascii dashes because OF COURSE THEY DO
-                                    destination = re.split(r"–|-", bus["route_long_name"])[-1].strip(),
+                                    destination = bus["trip_headsign"],
                                     due_in_seconds = self.__due_in_seconds(bus["arrival_time"]) + delta
                 )
                 arrivals.append(arrival)
