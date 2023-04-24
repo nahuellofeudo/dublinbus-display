@@ -240,11 +240,11 @@ class GTFSClient():
 
                 elif trip_action == "ADDED":
                     # TODO: Add support for added trips
-                    print("Trip {} added.".format(trip_id))
                     pass
-                else:
-                    print("Trip {} canceled.".format(trip_id))
+                elif trip_action == "CANCELED":
                     canceled_trips.add(trip_id)
+                else:
+                    print("Unsupported action:", trip_action)
             except Exception as x:
                 print("Error parsing GTFS-R entry:", str(e))
                 raise(x)
