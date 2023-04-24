@@ -34,7 +34,7 @@ MINUTES_TO_ROUTE = {
 XOFFSET_ROUTE = 24
 XOFFSET_DESTINATION = 300
 XOFFSEET_TIME_LEFT = 1606
-INTER_LINE_SPACE = -20 # 1920x720 -> 0
+INTER_LINE_SPACE = -15 # 1920x720 -> 0
 
 # Some global variables
 window : pygame.Surface = None
