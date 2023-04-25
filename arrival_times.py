@@ -17,7 +17,7 @@ class ArrivalTime():
         return self.due_in_minutes < 1
 
     def due_in_str(self) -> str:
-        if self.due_in_minutes < 99:
+        if self.due_in_minutes < 60:
             return str(self.due_in_minutes) + "min"
         else:
             due_in = datetime.datetime.now() + datetime.timedelta(0, self.due_in_seconds)
