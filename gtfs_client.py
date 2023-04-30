@@ -17,7 +17,8 @@ class GTFSClient():
     GTFS_URL = "https://api.nationaltransport.ie/gtfsr/v2/gtfsr?format=json"
     API_KEY = open("api-key.txt").read().strip()
 
-    def __init__(self, feed_url: str, stop_codes: list[str], update_queue: queue.Queue, update_interval_seconds: int = 60):
+    def __init__(self, feed_url: str, gtfs_r_url: str, gtfs_r_api_key: str, 
+                 stop_codes: list[str], update_queue: queue.Queue, update_interval_seconds: int = 60):
         self.stop_codes = stop_codes
         feed_name = feed_url.split('/')[-1]
 
@@ -86,7 +87,7 @@ class GTFSClient():
             # Finally, load stop_times.txt
             # Obtain the list of IDs of the desired stops. This is similar to what __wanted_stop_ids() does, 
             # but without a dependency on a fully formed feed object
-            wanted_stop_ids = feed_dict.get("stops")[feed_dict.get("stops")["stop_code"].isin(stop_codes)]["stop_id"]
+            wanted_stop_ids = feed_dict.get("stops")[feed_dict.get("stops")["stop_code"].isin(self.stop_codes)]["stop_id"]
             with z.open("stop_times.txt") as f:
                 iter_csv = pd.read_csv(f, iterator=True, chunksize=1000, dtype=gk.cs.DTYPE, encoding="utf-8-sig")
                 df = pd.concat([chunk[chunk["stop_id"].isin(wanted_stop_ids)] for chunk in iter_csv])
@@ -239,8 +240,8 @@ class GTFSClient():
                         deltas[trip_id] = deltas_for_trip
 
                 elif trip_action == "ADDED":
-                    # TODO: Add support for added trips
-                    pass
+                    route_id = e.get("trip_update").get("trip").get("route_id")
+                    
                 elif trip_action == "CANCELED":
                     canceled_trips.add(trip_id)
                 else:

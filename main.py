@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from config import Config
 from curses import COLOR_GREEN, COLOR_RED
 from datetime import datetime
 import os
@@ -22,27 +23,17 @@ COLOR_LCD_RED: pygame.Color = pygame.Color(0xff, 0x3a, 0x4a)
 COLOR_BACKGROUND = pygame.Color(0, 0, 0)
 UPDATE_INTERVAL_SECONDS = 62
 TEXT_SIZE = 160  # Size of the font in pixels
-STOPS = ['2410', '1114']
-
-# Define how long it takes to walk to a particular stop
-MINUTES_TO_ROUTE = {
-    '15A': 15,
-    '54A': 9
-}
 
 # Offsets of each part within a line
 XOFFSET_ROUTE = 24
 XOFFSET_DESTINATION = 300
 XOFFSEET_TIME_LEFT = 1606
-INTER_LINE_SPACE = -15 # 1920x720 -> 0
+INTER_LINE_SPACE = -15 
 
 # Some global variables
 window : pygame.Surface = None
 font: pygame.font.Font = None
 update_queue = queue.Queue(maxsize=10)
-#scheduler = DublinBusSoapClient(stops=STOPS, update_queue=update_queue, update_interval_seconds=UPDATE_INTERVAL_SECONDS)
-scheduler = GTFSClient(feed_url='https://www.transportforireland.ie/transitData/Data/GTFS_Realtime.zip', 
-                              stop_codes=STOPS, update_queue=update_queue, update_interval_seconds=UPDATE_INTERVAL_SECONDS)
 
 def get_line_offset(line: int) -> int:
     """ Calculate the Y offset within the display for a given text line """
@@ -77,12 +68,12 @@ def write_line(line: int, text: str, text_color: Color = COLOR_LCD_AMBER):
     window.blit(text_img, dest=(XOFFSET_ROUTE, vertical_offset))
 
 
-def update_screen(updates: list[ArrivalTime]) -> None:
+def update_screen(config: Config(), updates: list[ArrivalTime]) -> None:
     """ Repaint the screen with the new arrival times """
     updates = updates[0:LINE_COUNT] # take the first X lines
     for line_num, update in enumerate(updates):
         # Find what color we need to use for the ETA
-        time_to_walk = update.due_in_minutes - (MINUTES_TO_ROUTE.get(update.route_id) or 0)
+        time_to_walk = update.due_in_minutes - (config.minutes_to_stop(update.stop_id) or 0)
         lcd_color = None
         if time_to_walk > 5:
             lcd_color = COLOR_LCD_GREEN
@@ -122,16 +113,30 @@ def main():
 
     global font
     global window
+    global update_queue
 
-    """ Main method. Initialise graphics context """
+    config = Config()
+
+    # Initialise graphics context
     pygame.init()
     window = init_screen()
     pygame.font.init()
     font = pygame.font.Font(TEXT_FONT, TEXT_SIZE)
 
-    # Paint black
+    # Init screen
     clear_screen()
+    write_line(0, "Dublin Bus display")
+    write_line(1, "Loading feeds...")
     pygame.display.flip()
+
+    # Create scheduler; load time tables
+    scheduler = GTFSClient(feed_url=config.gtfs_feed_url,
+                           gtfs_r_url=config.gtfs_api_url,
+                           gtfs_r_api_key=config.gtfs_api_key,
+                           stop_codes=config.stop_codes, 
+                           update_queue=update_queue, 
+                           update_interval_seconds=config.update_interval_seconds)
+
     scheduler.start()
 
     # Main event loop
@@ -152,7 +157,7 @@ def main():
         if update_queue.qsize() > 0:
             clear_screen()
             updates = update_queue.get()
-            update_screen(updates)
+            update_screen(config, updates)
 
             pygame.display.flip()
         # Display update ends
