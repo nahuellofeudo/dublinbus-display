@@ -85,11 +85,12 @@ def update_screen(config: Config(), updates: list[ArrivalTime]) -> None:
 
         # Draw the line
         write_entry(
-            line=line_num,
-            route=update.route_id,
-            destination=update.destination,
-            time_left='Due' if update.isDue() else  update.due_in_str(),
-            time_color=lcd_color
+            line = line_num,
+            route = update.route_id,
+            destination = update.destination,
+            time_left = 'Due' if update.isDue() else  update.due_in_str(),
+            time_color = lcd_color,
+            text_color = COLOR_LCD_GREEN if update.is_added else COLOR_LCD_AMBER
         )
 
         # Add the current time to the bottom line

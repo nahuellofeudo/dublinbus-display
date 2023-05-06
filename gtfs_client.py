@@ -14,13 +14,12 @@ import traceback
 import zipfile
 
 class GTFSClient():
-    GTFS_URL = "https://api.nationaltransport.ie/gtfsr/v2/gtfsr?format=json"
-    API_KEY = open("api-key.txt").read().strip()
-
     def __init__(self, feed_url: str, gtfs_r_url: str, gtfs_r_api_key: str, 
                  stop_codes: list[str], update_queue: queue.Queue, update_interval_seconds: int = 60):
         self.stop_codes = stop_codes
         feed_name = feed_url.split('/')[-1]
+        self.gtfs_r_url = gtfs_r_url
+        self.gtfs_r_api_key = gtfs_r_api_key
 
         # Make sure that the feed file is up to date
         try:
@@ -129,9 +128,9 @@ class GTFSClient():
         return active_calendars
 
 
-    def __current_service_ids(self) -> pd.core.series.Series:
+    def __current_calendars(self) -> pd.core.frame.DataFrame:
         """
-        Filter the calendar entries to find all service ids that apply for today.
+        Filter the calendar entries to find all services that apply for today.
         Returns an empty list if none do.
         """
         
@@ -151,8 +150,16 @@ class GTFSClient():
         active_calendars = now_active
         if active_calendars.empty:
             print("The concatenation of today and tomorrow's calendars is empty. This should not happen.")
-        
-        return active_calendars["service_id"]
+
+        return active_calendars
+
+
+    def __current_service_ids(self) -> pd.core.series.Series:
+        """
+        Filter the calendar entries to find all service ids that apply for today.
+        Returns an empty list if none do.
+        """
+        return self.__current_calendars()["service_id"]
 
 
     def __trip_ids_for_service_ids(self, service_ids: pd.core.series.Series) -> pd.core.series.Series:
@@ -210,12 +217,20 @@ class GTFSClient():
             return tstop + 86400 - tnow
 
 
+    def __lookup_headsign_by_route(self, route_id: str, direction_id: int) -> str: 
+        """
+        Look up a destination string in Trips from the route and direction
+        """
+        trips = self.feed.trips
+        return trips[(trips["route_id"] == route_id) & (trips["direction_id"] == direction_id)].head(1)["trip_headsign"].item()
+
+
     def __poll_gtfsr_deltas(self) -> list[map, set]:
 
         # Poll GTFS-R API
-        if GTFSClient.API_KEY != "":
-            headers = {"x-api-key": GTFSClient.API_KEY}
-            response = requests.get(url = GTFSClient.GTFS_URL, headers = headers)
+        if self.gtfs_r_api_key != "":
+            headers = {"x-api-key": self.gtfs_r_api_key}
+            response = requests.get(url = self.gtfs_r_url, headers = headers)
             if response.status_code != 200:
                 print("GTFS-R sent non-OK response: {}\n{}".format(response.status_code, response.text))
                 return (None, None)
@@ -226,12 +241,21 @@ class GTFSClient():
 
         deltas = {}
         canceled_trips = set()
+        added_stops = []
+
+        # Pre-compute some data to use for added trips:
+        relevant_service_ids = self.__current_service_ids()
+        relevant_trips = self.feed.trips[self.feed.trips["service_id"].isin(relevant_service_ids)]
+        relevant_route_ids = set(relevant_trips["route_id"])
+        today = datetime.date.today().strftime("%Y%m%d")
 
         for e in deltas_json.get("entity"):
             is_deleted = e.get("is_deleted") or False
             try:
-                trip_id = e.get("trip_update").get("trip").get("trip_id")
-                trip_action = e.get("trip_update").get("trip").get("schedule_relationship")
+                trip_update = e.get("trip_update")
+                trip = trip_update.get("trip")
+                trip_id = trip.get("trip_id")
+                trip_action = trip.get("schedule_relationship")
                 if  trip_action == "SCHEDULED":
                     for u in e.get("trip_update", {}).get("stop_time_update", []): 
                         delay = u.get("arrival", u.get("departure", {})).get("delay", 0)
@@ -239,9 +263,38 @@ class GTFSClient():
                         deltas_for_trip[u.get("stop_id")] = delay
                         deltas[trip_id] = deltas_for_trip
 
-                elif trip_action == "ADDED":
-                    route_id = e.get("trip_update").get("trip").get("route_id")
+                elif trip_action == "ADDED":                    
+                    start_date = trip.get("start_date")
+                    start_time = trip.get("start_time")
+                    route_id = trip.get("route_id")
+                    direction_id = trip.get("direction_id")
                     
+                    # Check if the route is part of the routes we care about
+                    if not route_id in relevant_route_ids:
+                        continue
+
+                    # And that it's for today
+                    current_time = datetime.datetime.now().strftime("%H:%M:%S")
+                    if start_date > today or start_time > current_time:
+                        continue
+
+                    # Look for the entry for any of the stops we want
+                    wanted_stop_ids = self.__wanted_stop_ids()
+                    for stop_time_update in e.get("trip_update").get("stop_time_update", []):
+                        if stop_time_update.get("stop_id", "") in wanted_stop_ids:
+                            arrival_time = int((stop_time_update.get("arrival", stop_time_update.get("departure", {})).get("time", 0)))
+                            if arrival_time < int(time.time()):
+                                continue
+                            new_arrival = ArrivalTime(
+                                stop_id = stop_time_update.get("stop_id"),
+                                route_id = self.feed.routes[self.feed.routes["route_id"] == route_id]["route_short_name"].item(), 
+                                destination = self.__lookup_headsign_by_route(route_id, direction_id), 
+                                due_in_seconds = arrival_time - int(time.time()),
+                                is_added = True
+                            )
+                            print("Added route:", new_arrival)
+                            added_stops.append(new_arrival)
+
                 elif trip_action == "CANCELED":
                     canceled_trips.add(trip_id)
                 else:
@@ -250,7 +303,7 @@ class GTFSClient():
                 print("Error parsing GTFS-R entry:", str(e))
                 raise(x)
             
-        return deltas, canceled_trips
+        return deltas, canceled_trips, added_stops
 
 
     def get_next_n_buses(self, num_entries: int) -> pd.core.frame.DataFrame:
@@ -275,13 +328,13 @@ class GTFSClient():
         Create and enqueue the refreshed stop data
         """
         # Retrieve the GTFS-R deltas
-        deltas, canceled_trips = self.__poll_gtfsr_deltas()
-        if deltas:
+        deltas, canceled_trips, added_stops = self.__poll_gtfsr_deltas()
+        if len(deltas) > 0 or len(canceled_trips) > 0 or len(added_stops) > 0:
             # Only update deltas and canceled trips if the API returns data
             self.deltas = deltas
             self.canceled_trips = canceled_trips
+            self.added_stops = added_stops
 
-        # 
         arrivals = []
         # take more entries than we need in case there are cancelations 
         buses = self.get_next_n_buses(10) 
@@ -295,9 +348,15 @@ class GTFSClient():
                 arrival = ArrivalTime(stop_id = bus["stop_id"], 
                                     route_id = bus["route_short_name"],
                                     destination = bus["trip_headsign"],
-                                    due_in_seconds = self.__due_in_seconds(bus["arrival_time"]) + delta
+                                    due_in_seconds = self.__due_in_seconds(bus["arrival_time"]) + delta,
+                                    is_added = False
                 )
                 arrivals.append(arrival)
+
+        if len(self.added_stops) > 0:
+            # Append the added stops from GTFS-R and re-sort
+            arrivals.extend(self.added_stops)
+            arrivals.sort()
 
         # Select the first 5 of what remains
         arrivals = arrivals[0:5]
@@ -324,8 +383,3 @@ def every(delay, task) -> None:
             # logger.exception("Problem while executing repetitive task.")
         # skip tasks if we are behind schedule:
         next_time += (time.time() - next_time) // delay * delay + delay
-
-if __name__ == "__main__":
-    c = GTFSClient('https://www.transportforireland.ie/transitData/Data/GTFS_Realtime.zip', 
-                   ['2410', '1114'], None, None)
-    print(c.refresh())
