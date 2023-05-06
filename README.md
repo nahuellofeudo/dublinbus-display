@@ -45,9 +45,10 @@ If your display's resolution is not 1920x720, you will also need to change the c
 * python3-fiona
 * python3-pyproj (to build gtfs_kit2)
 * libspatialindex-c6
+* yaml
 
 ```
-$ sudo apt install python3-iso8601 python3-zeep libsdl2-ttf-2.0-0 python3-numpy python3-pandas python3-fiona python3-pyproj libspatialindex-c6
+$ sudo apt install python3-iso8601 python3-zeep libsdl2-ttf-2.0-0 python3-numpy python3-pandas python3-fiona python3-pyproj libspatialindex-c6 python3-yaml
 ```
 
 * pygame 2
