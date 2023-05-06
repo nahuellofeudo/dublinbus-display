@@ -3,6 +3,7 @@ from config import Config
 from curses import COLOR_GREEN, COLOR_RED
 from datetime import datetime
 import os
+import gc
 from glob import glob
 import pygame
 from pygame.locals import *
@@ -160,6 +161,7 @@ def main():
             update_screen(config, updates)
 
             pygame.display.flip()
+            gc.collect()
         # Display update ends
 
         sleep(0.2) 
