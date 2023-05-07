@@ -249,7 +249,7 @@ class GTFSClient():
         relevant_route_ids = set(relevant_trips["route_id"])
         today = datetime.date.today().strftime("%Y%m%d")
 
-        for e in deltas_json.get("entity"):
+        for e in deltas_json.get("entity", []):
             is_deleted = e.get("is_deleted") or False
             try:
                 trip_update = e.get("trip_update")
