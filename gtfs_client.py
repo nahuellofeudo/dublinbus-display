@@ -233,7 +233,7 @@ class GTFSClient():
             response = requests.get(url = self.gtfs_r_url, headers = headers)
             if response.status_code != 200:
                 print("GTFS-R sent non-OK response: {}\n{}".format(response.status_code, response.text))
-                return (None, None)
+                return ({}, [], [])
 
             deltas_json = json.loads(response.text)
         else:
