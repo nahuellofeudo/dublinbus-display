@@ -39,6 +39,7 @@ class GTFSClient():
         self.stop_ids = self.__wanted_stop_ids()
         self.deltas = {}
         self.canceled_trips = set()
+        self.added_stops = []
 
         # Schedule refresh       
         self._update_queue = update_queue
