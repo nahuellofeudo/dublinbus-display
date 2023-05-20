@@ -69,7 +69,7 @@ def write_line(line: int, text: str, text_color: Color = COLOR_LCD_AMBER):
     window.blit(text_img, dest=(XOFFSET_ROUTE, vertical_offset))
 
 
-def update_screen(config: Config(), updates: list[ArrivalTime]) -> None:
+def update_screen(config: Config, updates: list[ArrivalTime]) -> None:
     """ Repaint the screen with the new arrival times """
     updates = updates[0:LINE_COUNT] # take the first X lines
     for line_num, update in enumerate(updates):
