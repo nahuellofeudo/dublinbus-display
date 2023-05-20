@@ -15,8 +15,12 @@ import zipfile
 
 class GTFSClient():
     def __init__(self, feed_url: str, gtfs_r_url: str, gtfs_r_api_key: str, 
-                 stop_codes: list[str], update_queue: queue.Queue, update_interval_seconds: int = 60):
+                 stop_codes: list[str], routes_for_stops: dict[str, str],
+                 update_queue: queue.Queue, update_interval_seconds: int = 60):
+
         self.stop_codes = stop_codes
+        self.routes_for_stops = routes_for_stops
+
         feed_name = feed_url.split('/')[-1]
         self.gtfs_r_url = gtfs_r_url
         self.gtfs_r_api_key = gtfs_r_api_key
@@ -28,10 +32,6 @@ class GTFSClient():
             last_mtime = 0
 
         refreshed, new_mtime = refresh_feed.update_local_file_from_url_v1(last_mtime, feed_name, feed_url)
-        if refreshed:
-            print("The feed file was refreshed.")
-        else:
-            print("The feed file was up to date")
 
         # Load the feed
         self.feed = self._read_feed(feed_name, dist_units='km', stop_codes = stop_codes)
@@ -197,6 +197,25 @@ class GTFSClient():
 
         return joined_data 
 
+
+    def __filter_routes_by_stops(self, next_buses: pd.core.frame.DataFrame) -> pd.core.frame.DataFrame:
+        """
+        Takes a dataframe of a set of bus arrivals and only shows the routes we are interested in 
+        for the given stops (this is to eliminate routes that stop in more than one of our stops)
+        """
+        ids_to_delete = []
+
+        for index, next_bus in next_buses.iterrows():
+            stop_number = next_bus["stop_code"]
+            route = next_bus["route_short_name"]
+            routes_for_stop = self.routes_for_stops.get(int(stop_number), [])
+            if len(routes_for_stop) > 0 and not route in routes_for_stop:
+                # we should not show this entry. Note the ID
+                ids_to_delete.append(index)
+        
+        next_buses.drop(index=ids_to_delete, inplace=True)
+        return next_buses
+
     def __time_to_seconds(self, s: str) -> int:
         sx = s.split(":")
         if len(sx) != 3: 
@@ -315,6 +334,7 @@ class GTFSClient():
         trip_ids = self.__trip_ids_for_service_ids(service_ids)
         next_buses = self.__next_n_buses(trip_ids, num_entries)
         joined_data = self.__join_data(next_buses)
+        self.__filter_routes_by_stops(joined_data)
         return joined_data
 
 
@@ -338,7 +358,7 @@ class GTFSClient():
 
         arrivals = []
         # take more entries than we need in case there are cancelations 
-        buses = self.get_next_n_buses(10) 
+        buses = self.get_next_n_buses(15) 
         
         for index, bus in buses.iterrows():
             if not bus["trip_id"] in self.canceled_trips:

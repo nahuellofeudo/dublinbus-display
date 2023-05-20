@@ -33,3 +33,13 @@ class Config:
 
     def minutes_to_stop(self, stop_id) -> int: 
         return self.__walk_time_by_stop.get(stop_id, 0)
+
+    def routes_for_stops(self) -> map:
+        result = {}
+
+        for s in self.__config.get("stops"):
+            for r in s.get("routes", []):
+                routes = (result.get(s.get("stop_id")) or [])
+                routes.append(r)
+                result[s.get("stop_id")] = routes
+        return result

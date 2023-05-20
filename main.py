@@ -93,9 +93,9 @@ def update_screen(config: Config(), updates: list[ArrivalTime]) -> None:
             text_color = COLOR_LCD_GREEN if update.is_added else COLOR_LCD_AMBER
         )
 
-        # Add the current time to the bottom line
-        datetime_text = "Current time: " + datetime.today().strftime("%d/%m/%Y %H:%M")
-        write_line(5, datetime_text)
+    # Add the current time to the bottom line
+    datetime_text = "Current time: " + datetime.today().strftime("%d/%m/%Y %H:%M")
+    write_line(5, datetime_text)
 
 def clear_screen() -> None:
     """ Clear screen """
@@ -136,6 +136,7 @@ def main():
                            gtfs_r_url=config.gtfs_api_url,
                            gtfs_r_api_key=config.gtfs_api_key,
                            stop_codes=config.stop_codes, 
+                           routes_for_stops=config.routes_for_stops(),
                            update_queue=update_queue, 
                            update_interval_seconds=config.update_interval_seconds)
 

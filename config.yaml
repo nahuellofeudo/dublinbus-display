@@ -16,12 +16,20 @@ stops: [
   {
     # Route 15A
     stop_id: 1114,
-    walk_time: 15
+    walk_time: 15,
+    routes: ["15A"]
   },
   {
     # route 54A
     stop_id: 2410,
-    walk_time: 9
+    walk_time: 9,
+    routes: ["54A"]
+  },
+  {
+    # route 9
+    stop_id: 2438,
+    walk_time: 15,
+    routes: ["9"]
   }
 ]
   
