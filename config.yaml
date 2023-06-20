@@ -3,7 +3,7 @@
 # URLs and API keys for the different parts of the GTFS-R feed
 # You should not change these unless a new version of the API is released
 gtfs-feed-url: "https://www.transportforireland.ie/transitData/Data/GTFS_Realtime.zip"
-gtfs-r-api-url: "https://api.nationaltransport.ie/gtfsr/v2/gtfsr?format=json"
+gtfs-r-api-url: "https://api.nationaltransport.ie/gtfsr/v2/TripUpdates?format=json"
 
 # You should change this one. Use the key you get from TFI when you register for GTFS-R access
 gtfs-r-api_key: "API KEY GOES HERE"
