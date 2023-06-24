@@ -1,4 +1,6 @@
 __pycache__/*
+.vscode/*
+Enclosure/*.stl
 *test*
 *.svg
 *.FCStd1
@@ -7,4 +9,3 @@ google_transit_combined*
 jd_lcd_rounded.ttf
 GTFS_Realtime.zip
 config.yaml
-Enclosure/*.stl
