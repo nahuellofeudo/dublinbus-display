@@ -51,7 +51,9 @@ def update_local_file_from_url_v1(last_mtime, local_file, url):
 
     # If file is newer than last one we saw, get it
     updated = False
-    if mtime > int(last_mtime):
+    print('Comparing feed mtimes: feed: {} vs remote {}'.format(str(last_mtime), str(mtime)), file=sys.stderr)
+    if not last_mtime or mtime > int(last_mtime):
+        print('Refreshing feed..', file=sys.stderr)
         updated = True
         r2 = requests.get(url)  # download the new file content
         if r2.status_code != requests.codes.ok:
@@ -62,6 +64,9 @@ def update_local_file_from_url_v1(last_mtime, local_file, url):
 
         # write new content to local file
         write_file_with_time(local_file, r2.content, mtime)
+        print('Downloaded {}.'.format(local_file), file=sys.stderr)
+    else:   
+        print('No need to refresh feed.', file=sys.stderr)
 
     return updated, mtime
 

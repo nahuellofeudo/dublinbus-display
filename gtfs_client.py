@@ -22,13 +22,13 @@ class GTFSClient():
         self.stop_codes = stop_codes
         self.routes_for_stops = routes_for_stops
 
-        feed_name = feed_url.split('/')[-1]
+        feed_name = '/tmp/' + feed_url.split('/')[-1]
         self.gtfs_r_url = gtfs_r_url
         self.gtfs_r_api_key = gtfs_r_api_key
 
         # Make sure that the feed file is up to date
         try:
-            last_mtime = os.stat(feed_name).st_mtime
+            last_mtime = int(os.stat(feed_name).st_mtime)
         except:
             last_mtime = 0
 
