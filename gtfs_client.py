@@ -8,6 +8,7 @@ import pandas as pd
 import queue
 import refresh_feed
 import requests
+import sys
 import time
 import threading
 import traceback
@@ -242,7 +243,13 @@ class GTFSClient():
         Look up a destination string in Trips from the route and direction
         """
         trips = self.feed.trips
-        return trips[(trips["route_id"] == route_id) & (trips["direction_id"] == direction_id)].head(1)["trip_headsign"].item()
+        destination = trips[(trips["route_id"] == route_id) & (trips["direction_id"] == direction_id)].head(1)["trip_headsign"].item()
+        # For some reason destination sometimes isn't a string. Try to find out why
+        if not destination.__class__ == str:
+            sys.stderr.write("Destination not found for route " + str(route_id) + ", direction " + str(direction_id) + "\n")
+            destination = "---- ?????? ----"
+        
+        return destination
 
 
     def __poll_gtfsr_deltas(self) -> list[map, set]:

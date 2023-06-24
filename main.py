@@ -47,11 +47,6 @@ def write_entry(line: int,
     time_color: Color = COLOR_LCD_AMBER, text_color: Color = COLOR_LCD_AMBER):
     """ Draws on the screen buffer an entry corresponding to an arrival time. """
 
-    # For some reason destination sometimes isn't a strint. Try to find out why
-    if not destination.__class__ == str:
-        print("Destination is not a string. Class: " + str(destination.__class__) + ". Value: " + str(destination))
-        destination = "---- ?????? ----"
-
     # Step 1: Render the fragments
     route_img = font.render(route[0:4], True, text_color)
     destination_img = font.render(destination[0:21], True, text_color)
