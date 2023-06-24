@@ -314,7 +314,7 @@ class GTFSClient():
                             if arrival_time < int(time.time()):
                                 continue
                             new_arrival = ArrivalTime(
-                                stop_id = stop_time_update.get("stop_id"),
+                                stop_id = stop_time_update.get("stop_code"),
                                 route_id = self.feed.routes[self.feed.routes["route_id"] == route_id]["route_short_name"].item(), 
                                 destination = self.__lookup_headsign_by_route(route_id, direction_id), 
                                 due_in_seconds = arrival_time - int(time.time()),
@@ -374,7 +374,7 @@ class GTFSClient():
                 if delta != 0:
                     print("Delta for route {} stop {} is {}".format(bus["route_short_name"], bus["stop_id"], delta))
 
-                arrival = ArrivalTime(stop_id = bus["stop_id"], 
+                arrival = ArrivalTime(stop_id = bus["stop_code"], 
                                     route_id = bus["route_short_name"],
                                     destination = bus["trip_headsign"],
                                     due_in_seconds = self.__due_in_seconds(bus["arrival_time"]) + delta,
