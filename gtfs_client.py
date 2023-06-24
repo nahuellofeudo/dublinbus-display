@@ -69,8 +69,9 @@ class GTFSClient():
 
         path = gk.Path(path)
         if not path.exists():
-            raise ValueError(f"Path {path} does not exist")
+            raise ValueError("Path {} does not exist".format(path))
 
+        print("Loading GTFS feed {}".format(path), file=sys.stderr)
         gc.collect()
 
         feed_dict = {table: None for table in gk.cs.GTFS_REF["table"]}
