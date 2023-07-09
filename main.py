@@ -120,7 +120,9 @@ def main():
     config = Config()
 
     # Initialise graphics context
-    pygame.init()
+    pygame.display.init()
+    pygame.font.init()
+
     window = init_screen()
     pygame.font.init()
     font = pygame.font.Font(TEXT_FONT, TEXT_SIZE)
