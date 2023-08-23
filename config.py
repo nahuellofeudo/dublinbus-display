@@ -28,6 +28,10 @@ class Config:
         return self.config.get("update-interval-seconds")
 
     @property
+    def http_server(self) -> bool:
+        return self.config.get("http-server")
+
+    @property
     def stop_codes(self) -> list[str]:
         return [str(s["stop_id"]) for s in self.config.get("stops")]
 
