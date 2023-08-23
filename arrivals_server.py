@@ -1,5 +1,6 @@
 import jsonpickle
 import threading
+import time
 
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
@@ -20,7 +21,7 @@ class ArrivalsServer:
             self.send_response(200)
             self.send_header("Content-type", "application/json")
             self.end_headers()
-            self.wfile.write(jsonpickle.encode(arrivals).encode("utf-8"))
+            self.wfile.write('{ "timestamp": "%d", data: "%s"' % (time.time(), jsonpickle.encode(arrivals).encode("utf-8")))
         
         do_POST = do_GET
         do_PUT = do_GET
