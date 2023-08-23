@@ -21,7 +21,11 @@ class ArrivalsServer:
             self.send_response(200)
             self.send_header("Content-type", "application/json")
             self.end_headers()
-            self.wfile.write('{ "timestamp": "%d", data: "%s"' % (time.time(), jsonpickle.encode(arrivals).encode("utf-8")))
+
+            ts = time.time_ns()
+            data = jsonpickle.encode(arrivals)
+
+            self.wfile.write(f'{{ "timestamp": {ts}, "data": {data}}}'.encode("utf-8"))
         
         do_POST = do_GET
         do_PUT = do_GET
