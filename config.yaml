@@ -13,7 +13,7 @@ gtfs-r-api_key: "API KEY GOES HERE"
 update-interval-seconds: 62
 
 # Start a HTTP server emitting the current data as JSON or HTTP.
-http-server: true
+http-server: false
 
 stops: [
   {
