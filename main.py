@@ -125,7 +125,7 @@ def main():
 
     window = init_screen()
     pygame.font.init()
-    font = pygame.font.Font(TEXT_FONT, TEXT_SIZE)
+    font = pygame.font.Font(config.font_file or TEXT_FONT, TEXT_SIZE)
 
     # Init screen
     clear_screen()

@@ -12,6 +12,9 @@ gtfs-r-api_key: "API KEY GOES HERE"
 # It must be strictly larger than 60 because the GTFS-R API will throttle us otherwise
 update-interval-seconds: 62
 
+# The font to use for the display.
+font-file: "jd_lcd_rounded.ttf"
+
 stops: [
   {
     # Route 15A
