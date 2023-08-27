@@ -11,6 +11,7 @@ from time import sleep
 import queue
 from arrival_times import ArrivalTime
 from gtfs_client import GTFSClient
+from arrivals_server import ArrivalsServer
 
 # Constants
 # The font is JD LCD Rounded by Jecko Development 
@@ -35,6 +36,7 @@ INTER_LINE_SPACE = -15
 window : pygame.Surface = None
 font: pygame.font.Font = None
 update_queue = queue.Queue(maxsize=10)
+arrivals : list[ArrivalTime] = []
 
 def get_line_offset(line: int) -> int:
     """ Calculate the Y offset within the display for a given text line """
@@ -68,9 +70,14 @@ def write_line(line: int, text: str, text_color: Color = COLOR_LCD_AMBER):
     vertical_offset = get_line_offset(line)
     window.blit(text_img, dest=(XOFFSET_ROUTE, vertical_offset))
 
+def get_arrivals() -> list[ArrivalTime]:
+    """ Retrieves the current departures list. """
+    return arrivals
 
 def update_screen(config: Config, updates: list[ArrivalTime]) -> None:
     """ Repaint the screen with the new arrival times """
+    global arrivals
+    arrivals = updates
     updates = updates[0:LINE_COUNT] # take the first X lines
     for line_num, update in enumerate(updates):
         # Find what color we need to use for the ETA
@@ -141,8 +148,12 @@ def main():
                            routes_for_stops=config.routes_for_stops(),
                            update_queue=update_queue, 
                            update_interval_seconds=config.update_interval_seconds)
-
     scheduler.start()
+
+    # Start HTTP server
+    if config.http_server:
+      server = ArrivalsServer(get_arrivals=get_arrivals)
+      server.start()
 
     # Main event loop
     running = True
