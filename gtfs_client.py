@@ -316,6 +316,7 @@ class GTFSClient():
                             new_arrival = ArrivalTime(
                                 stop_id = stop_time_update.get("stop_code"),
                                 route_id = self.feed.routes[self.feed.routes["route_id"] == route_id]["route_short_name"].item(), 
+                                route_type = self.feed.routes[self.feed.routes["route_id"] == route_id]["route_type"].item(), 
                                 destination = self.__lookup_headsign_by_route(route_id, direction_id), 
                                 due_in_seconds = arrival_time - int(time.time()),
                                 is_added = True
@@ -376,6 +377,7 @@ class GTFSClient():
 
                 arrival = ArrivalTime(stop_id = bus["stop_code"], 
                                     route_id = bus["route_short_name"],
+                                    route_type = bus["route_type"],
                                     destination = bus["trip_headsign"],
                                     due_in_seconds = self.__due_in_seconds(bus["arrival_time"]) + delta,
                                     is_added = False
