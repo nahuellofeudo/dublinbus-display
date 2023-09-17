@@ -7,6 +7,7 @@ import gc
 from glob import glob
 import pygame
 from pygame.locals import *
+import schedule
 from time import sleep
 import queue
 from arrival_times import ArrivalTime
@@ -142,7 +143,7 @@ def main():
                            update_queue=update_queue, 
                            update_interval_seconds=config.update_interval_seconds)
 
-    scheduler.start()
+    schedule.every(config.update_interval_seconds).seconds.do(scheduler.refresh)
 
     # Main event loop
     running = True
@@ -159,6 +160,7 @@ def main():
         # Pygame event handling ends
 
         # Display update begins
+        schedule.run_pending()
         if update_queue.qsize() > 0:
             clear_screen()
             updates = update_queue.get()

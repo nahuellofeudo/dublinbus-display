@@ -56,7 +56,7 @@ $ sudo apt install python3-iso8601 python3-zeep libsdl2-ttf-2.0-0 python3-numpy 
 
 ```shell
 $ sudo apt install python3-pip
-$ sudo pip3 install pygame gtfs_kit
+$ sudo pip3 install pygame gtfs_kit schedule --break-system-packages
 ```
 
 

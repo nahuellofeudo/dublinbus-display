@@ -11,7 +11,6 @@ import requests
 import sys
 import time
 import threading
-import traceback
 import zipfile
 
 class GTFSClient():
@@ -46,7 +45,6 @@ class GTFSClient():
         self._update_queue = update_queue
         if update_interval_seconds and update_queue: 
             self._update_interval_seconds = update_interval_seconds
-            self._refresh_thread = threading.Thread(target=lambda: every(update_interval_seconds, self.refresh))
 
     def _read_feed(self, path: gk.Path, dist_units: str, stop_codes: list[str]) -> gk.Feed:
         """
@@ -346,16 +344,11 @@ class GTFSClient():
         return joined_data
 
 
-    def start(self) -> None:
-        """ Start the refresh thread """
-        self._refresh_thread.start()
-        self.refresh()
-
-
     def refresh(self):
         """
         Create and enqueue the refreshed stop data
         """
+        print("Refresh")
         # Retrieve the GTFS-R deltas
         deltas, canceled_trips, added_stops = self.__poll_gtfsr_deltas()
         if len(deltas) > 0 or len(canceled_trips) > 0 or len(added_stops) > 0:
@@ -394,21 +387,3 @@ class GTFSClient():
             self._update_queue.put(arrivals)
 
         gc.collect()
-        return arrivals
-    
-
-def every(delay, task) -> None:
-    """ Auxilliary function to schedule updates. 
-        Taken from https://stackoverflow.com/questions/474528/what-is-the-best-way-to-repeatedly-execute-a-function-every-x-seconds
-    """
-    next_time = time.time() + delay
-    while True:
-        time.sleep(max(0, next_time - time.time()))
-        try:
-            task()
-        except Exception:
-            traceback.print_exc()
-            # in production code you might want to have this instead of course:
-            # logger.exception("Problem while executing repetitive task.")
-        # skip tasks if we are behind schedule:
-        next_time += (time.time() - next_time) // delay * delay + delay
