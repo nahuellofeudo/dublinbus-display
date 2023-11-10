@@ -352,41 +352,44 @@ class GTFSClient():
         """
         Create and enqueue the refreshed stop data
         """
-        # Retrieve the GTFS-R deltas
-        deltas, canceled_trips, added_stops = self.__poll_gtfsr_deltas()
-        if len(deltas) > 0 or len(canceled_trips) > 0 or len(added_stops) > 0:
-            # Only update deltas and canceled trips if the API returns data
-            self.deltas = deltas
-            self.canceled_trips = canceled_trips
-            self.added_stops = added_stops
+        try:
+            # Retrieve the GTFS-R deltas
+            deltas, canceled_trips, added_stops = self.__poll_gtfsr_deltas()
+            if len(deltas) > 0 or len(canceled_trips) > 0 or len(added_stops) > 0:
+                # Only update deltas and canceled trips if the API returns data
+                self.deltas = deltas
+                self.canceled_trips = canceled_trips
+                self.added_stops = added_stops
 
-        arrivals = []
-        # take more entries than we need in case there are cancelations 
-        buses = self.get_next_n_buses(15) 
-        
-        for index, bus in buses.iterrows():
-            if not bus["trip_id"] in self.canceled_trips:
-                delta = self.deltas.get(bus["trip_id"], {}).get(bus["stop_id"], 0)
-                if delta != 0:
-                    print("Delta for route {} stop {} is {}".format(bus["route_short_name"], bus["stop_id"], delta))
+            arrivals = []
+            # take more entries than we need in case there are cancelations 
+            buses = self.get_next_n_buses(15) 
+            
+            for index, bus in buses.iterrows():
+                if not bus["trip_id"] in self.canceled_trips:
+                    delta = self.deltas.get(bus["trip_id"], {}).get(bus["stop_id"], 0)
+                    if delta != 0:
+                        print("Delta for route {} stop {} is {}".format(bus["route_short_name"], bus["stop_id"], delta))
 
-                arrival = ArrivalTime(stop_id = bus["stop_code"], 
-                                    route_id = bus["route_short_name"],
-                                    destination = bus["trip_headsign"],
-                                    due_in_seconds = self.__due_in_seconds(bus["arrival_time"]) + delta,
-                                    is_added = False
-                )
-                arrivals.append(arrival)
+                    arrival = ArrivalTime(stop_id = bus["stop_code"], 
+                                        route_id = bus["route_short_name"],
+                                        destination = bus["trip_headsign"],
+                                        due_in_seconds = self.__due_in_seconds(bus["arrival_time"]) + delta,
+                                        is_added = False
+                    )
+                    arrivals.append(arrival)
 
-        if len(self.added_stops) > 0:
-            # Append the added stops from GTFS-R and re-sort
-            arrivals.extend(self.added_stops)
-            arrivals.sort()
+            if len(self.added_stops) > 0:
+                # Append the added stops from GTFS-R and re-sort
+                arrivals.extend(self.added_stops)
+                arrivals.sort()
 
-        # Select the first 5 of what remains
-        arrivals = arrivals[0:5]
+            # Select the first 5 of what remains
+            arrivals = arrivals[0:5]
 
-        if self._update_queue:
-            self._update_queue.put(arrivals)
+            if self._update_queue:
+                self._update_queue.put(arrivals)
 
-        gc.collect()
+            gc.collect()
+        except Exception as e:
+            print("Exception in refresh: {}".format(str(e)))
