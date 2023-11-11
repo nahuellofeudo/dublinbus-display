@@ -257,7 +257,7 @@ class GTFSClient():
             # Poll GTFS-R API
             if self.gtfs_r_api_key != "":
                 headers = {"x-api-key": self.gtfs_r_api_key}
-                response = requests.get(url = self.gtfs_r_url, headers = headers)
+                response = requests.get(url = self.gtfs_r_url, headers = headers, timeout=(2, 10))
                 if response.status_code != 200:
                     print("GTFS-R sent non-OK response: {}\n{}".format(response.status_code, response.text))
                     return ({}, [], [])
