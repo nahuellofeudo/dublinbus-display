@@ -7,6 +7,7 @@ import os
 import sys
 import time
 import requests
+import urllib3
 
 # First we construct a handful of functions - testing happens down at the end
 def httpdate_to_ts(dt):
@@ -16,16 +17,6 @@ def httpdate_to_ts(dt):
 
 def ts_to_httpdate(ts):
     return email.utils.formatdate(timeval=ts, localtime=False, usegmt=True)
-
-
-def write_file_with_time(filename, content, timestamp):
-    # put the content into the file
-    with open(filename, 'wb') as fp:
-        fp.write(content)
-
-    # Then set the file's timestamps as requested
-    os.utime(filename, times=(time.time(), timestamp))
-
 
 # v1: download remote file if HTTP's Last-Modified header indicates that
 #     the file has been updated. This requires the remote server to support
@@ -55,15 +46,28 @@ def update_local_file_from_url_v1(last_mtime, local_file, url):
     if not last_mtime or mtime > int(last_mtime):
         print('Refreshing feed..', file=sys.stderr)
         updated = True
-        r2 = requests.get(url)  # download the new file content
-        if r2.status_code != requests.codes.ok:
+        # download the new file content
+        conn = urllib3.connection_from_url(url)
+        r2 = conn.request(method="GET", url=url, preload_content=False) 
+        if r2.status != 200:
             # http request failed
             print('HEY! get for {} returned {}'.format(url, r2.status_code),
-                  file=sys.stderr)
+                file=sys.stderr)
+            try:
+                r2.release_conn()
+            except Exception as e:
+                print('Could not release connection to {}: {}'.format(url, str(e)))
             return False, last_mtime
 
+        with open(local_file,'bw') as f:
+            for chunk in r2.stream(amt=65536, decode_content=True):
+                f.write(chunk)
+
+        r2.release_conn()
+        # Change the mtime of the file
+        os.utime(local_file, (mtime, mtime))
+
         # write new content to local file
-        write_file_with_time(local_file, r2.content, mtime)
         print('Downloaded {}.'.format(local_file), file=sys.stderr)
     else:   
         print('No need to refresh feed.', file=sys.stderr)
