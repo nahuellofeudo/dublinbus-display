@@ -1,6 +1,6 @@
 import datetime
 
-class ArrivalTime():
+class ArrivalTime:
     """ Represents the arrival times of buses at one of the configured stops """
 
     def __init__(self, stop_id: str, route_id: str, destination: str, due_in_seconds: int, is_added: bool = False) -> None:
@@ -14,7 +14,7 @@ class ArrivalTime():
     def due_in_minutes(self) -> int:
         return int(self.due_in_seconds / 60)
 
-    def isDue(self) ->  bool:
+    def is_due(self) ->  bool:
         return self.due_in_minutes < 1
 
     def due_in_str(self) -> str:

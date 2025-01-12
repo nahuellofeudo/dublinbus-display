@@ -6,7 +6,7 @@ class Config:
         with open("config.yaml") as f:
             self.config = yaml.safe_load(f.read())
 
-        # Pre-load some dictionaries to simplify lookups
+        # Preload some dictionaries to simplify lookups
         self.walk_time_by_stop = {}
         for s in self.config.get("stops", []):
             self.walk_time_by_stop[str(s["stop_id"])] = s["walk_time"]

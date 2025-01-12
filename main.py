@@ -90,7 +90,7 @@ def update_screen(config: Config, updates: list[ArrivalTime]) -> None:
                 line = line_num,
                 route = update.route_id,
                 destination = update.destination,
-                time_left = 'Due' if update.isDue() else  update.due_in_str(),
+                time_left = 'Due' if update.is_due() else  update.due_in_str(),
                 time_color = lcd_color,
                 text_color = COLOR_LCD_GREEN if update.is_added else COLOR_LCD_AMBER
             )
@@ -146,7 +146,9 @@ def main():
                            update_queue=update_queue, 
                            update_interval_seconds=config.update_interval_seconds)
 
+    # Schedule feed refresh, and force the first one
     schedule.every(config.update_interval_seconds).seconds.do(scheduler.refresh)
+    scheduler.refresh()
 
     # Main event loop
     running = True

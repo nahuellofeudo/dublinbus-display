@@ -10,10 +10,9 @@ import refresh_feed
 import requests
 import sys
 import time
-import threading
 import zipfile
 
-class GTFSClient():
+class GTFSClient:
     def __init__(self, feed_url: str, gtfs_r_url: str, gtfs_r_api_key: str, 
                  stop_codes: list[str], routes_for_stops: dict[str, str],
                  update_queue: queue.Queue, update_interval_seconds: int = 60):
@@ -31,10 +30,10 @@ class GTFSClient():
         except:
             last_mtime = 0
 
-        refreshed, new_mtime = refresh_feed.update_local_file_from_url_v1(last_mtime, feed_name, feed_url)
+        _, new_mtime = refresh_feed.update_local_file_from_url_v1(last_mtime, feed_name, feed_url)
 
         # Load the feed
-        self.feed = self._read_feed(feed_name, dist_units='km', stop_codes = stop_codes)
+        self.feed = self._read_feed(feed_name, dist_units='km')
         gc.collect()
         self.stop_ids = self.__wanted_stop_ids()
         self.deltas = {}
@@ -46,7 +45,7 @@ class GTFSClient():
         if update_interval_seconds and update_queue: 
             self._update_interval_seconds = update_interval_seconds
 
-    def _read_feed(self, path: gk.Path, dist_units: str, stop_codes: list[str]) -> gk.Feed:
+    def _read_feed(self, path: str, dist_units: str) -> gk.Feed:
         """
         NOTE: This helper method was extracted from gtfs_kit.feed to modify it
         to only load the stop_times for the stops we are interested in,
@@ -55,7 +54,7 @@ class GTFSClient():
         This version also reads CSV data straight from the zip file to avoid
         wearing out the Pi's SD card.
         """
-        FILES_TO_LOAD = [
+        files_to_load = [
             # List of feed files to load. stop_times.txt is loaded separately.
             'trips.txt',
             'routes.txt',
@@ -65,8 +64,7 @@ class GTFSClient():
             'agency.txt'
         ]
 
-        path = gk.Path(path)
-        if not path.exists():
+        if not os.path.exists(path):
             raise ValueError("Path {} does not exist".format(path))
 
         print("Loading GTFS feed {}".format(path), file=sys.stderr)
@@ -74,7 +72,7 @@ class GTFSClient():
 
         feed_dict = {table: None for table in gk.cs.GTFS_REF["table"]}
         with zipfile.ZipFile(path) as z:
-            for filename in FILES_TO_LOAD:
+            for filename in files_to_load:
                 table = filename.split(".")[0]
                 # read the file
                 with z.open(filename) as f:
@@ -216,20 +214,22 @@ class GTFSClient():
         next_buses.drop(index=ids_to_delete, inplace=True)
         return next_buses
 
-    def __time_to_seconds(self, s: str) -> int:
+    @staticmethod
+    def __time_to_seconds(s: str) -> int:
         sx = s.split(":")
         if len(sx) != 3: 
             print("Malformed timestamp:", s)
             return 0
         return int(sx[0]) * 3600 + int(sx[1]) * 60 + int (sx[2])
 
-    def __due_in_seconds(self, time_str: str) -> int:
+    @staticmethod
+    def __due_in_seconds(time_str: str) -> int:
         """
         Returns the number of seconds in the future that the time_str (format hh:mm:ss) is
         """
         now = datetime.datetime.now().strftime("%H:%M:%S")
-        tnow = self.__time_to_seconds(now)
-        tstop = self.__time_to_seconds(time_str)
+        tnow = GTFSClient.__time_to_seconds(now)
+        tstop = GTFSClient.__time_to_seconds(time_str)
         if tstop > tnow:
             return tstop - tnow
         else:
@@ -251,8 +251,7 @@ class GTFSClient():
         return destination
 
 
-    def __poll_gtfsr_deltas(self) -> list[map, set]:
-
+    def __poll_gtfsr_deltas(self) -> tuple[dict, list, list]:
         try:
             # Poll GTFS-R API
             if self.gtfs_r_api_key != "":
@@ -260,7 +259,7 @@ class GTFSClient():
                 response = requests.get(url = self.gtfs_r_url, headers = headers, timeout=(2, 10))
                 if response.status_code != 200:
                     print("GTFS-R sent non-OK response: {}\n{}".format(response.status_code, response.text))
-                    return ({}, [], [])
+                    return {}, [], []
 
                 deltas_json = json.loads(response.text)
             else:
@@ -277,7 +276,6 @@ class GTFSClient():
             today = datetime.date.today().strftime("%Y%m%d")
 
             for e in deltas_json.get("entity", []):
-                is_deleted = e.get("is_deleted") or False
                 try:
                     trip_update = e.get("trip_update")
                     trip = trip_update.get("trip")
@@ -328,12 +326,12 @@ class GTFSClient():
                         print("Unsupported action:", trip_action)
                 except Exception as x:
                     print("Error parsing GTFS-R entry:", str(e))
-                    raise(x)
+                    raise x
                 
             return deltas, canceled_trips, added_stops
         except Exception as e:
             print("Polling for GTFS-R failed:", str(e))
-            return ({}, [], [])
+            return {}, [], []
 
 
     def get_next_n_buses(self, num_entries: int) -> pd.core.frame.DataFrame:
@@ -362,7 +360,7 @@ class GTFSClient():
                 self.added_stops = added_stops
 
             arrivals = []
-            # take more entries than we need in case there are cancelations 
+            # take more entries than we need in case there are cancellations
             buses = self.get_next_n_buses(15) 
             
             for index, bus in buses.iterrows():
@@ -374,7 +372,7 @@ class GTFSClient():
                     arrival = ArrivalTime(stop_id = bus["stop_code"], 
                                         route_id = bus["route_short_name"],
                                         destination = bus["trip_headsign"],
-                                        due_in_seconds = self.__due_in_seconds(bus["arrival_time"]) + delta,
+                                        due_in_seconds = GTFSClient.__due_in_seconds(bus["arrival_time"]) + delta,
                                         is_added = False
                     )
                     arrivals.append(arrival)
